@@ -60,3 +60,5 @@ Default device: `hw:CARD=ICUSBAUDIO7D,DEV=0` at **48 kHz, S16_LE, 8 channels**, 
 `bean-lab field-map` renders 2-D steady-state pressure maps (simultaneous, focused, difference in dB) of a tone from the array, free-field model. See [docs/field-map.md](docs/field-map.md). PNG output needs matplotlib (`pip install -e '.[plot]'`).
 ## Parametric study
 `bean-lab campaign` runs the frequency, spacing and focal-direction series and writes comparison plates and indicators. Results and discussion: [docs/parametric-study.md](docs/parametric-study.md).
+## Broadband study
+`bean-lab broadband-map` and `bean-lab broadband-campaign` compute time-averaged energy maps for band-limited signals (real focusing delays, mean-square combination of lines). Results and discussion: [docs/broadband-study.md](docs/broadband-study.md).
