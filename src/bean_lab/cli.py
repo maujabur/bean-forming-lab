@@ -295,6 +295,10 @@ def main(argv: list[str] | None = None) -> int:
         return focus_main(argv[1:])
     if argv and argv[0] == "listen":
         return listen_main(argv[1:])
+    if argv and argv[0] in ("broadband-map", "broadband-campaign"):
+        from .broadband import broadband_campaign_main, broadband_map_main
+
+        return (broadband_map_main if argv[0] == "broadband-map" else broadband_campaign_main)(argv[1:])
     if argv and argv[0] == "campaign":
         from .campaign import campaign_main
 
