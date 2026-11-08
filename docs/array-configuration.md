@@ -1,5 +1,7 @@
 # Speaker identity, geometry, and hardware mapping
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 The lab uses **stable speaker numbers** (1–8) throughout experiments and DSP. There are two independent JSON files:
 
 - `configs/arrays/linear-4.json`: physical speaker positions in meters. No PCM channels.

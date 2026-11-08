@@ -1,5 +1,7 @@
 # Three-dimensional field of the arrays
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 Orthogonal cuts (XY, XZ, YZ) of the broadband energy field through the focus, for the 8-speaker line array (L), the staggered 3-2-3 array (P) and a wide planar reference (W). Free-field ideal point-source model: **predictions in dB relative to one speaker at 1 m, not measurements and not dB SPL.** The energy model, the real focusing delays and the spectral quadrature are those of `docs/broadband-study.md` (a tone is a one-line spectrum).
 
 ## Geometries

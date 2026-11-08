@@ -1,5 +1,7 @@
 # Broadband acoustic field study
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 What changes when a pure tone is replaced by a broadband signal: spatial distribution of the time-averaged acoustic energy of the 8-speaker line array, with the real focusing delays of `docs/static-focusing.md`. Free-field, ideal point-source model: **predictions in dB relative to one speaker heard at 1 m, not measurements and not dB SPL.**
 
 ## Method

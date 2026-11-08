@@ -1,5 +1,7 @@
 # Parametric beamforming study
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 Simulated pressure fields of an 8-speaker line array as functions of frequency (series F), element spacing (series S) and focal direction (series D). Everything is the free-field, ideal point-source model of `docs/field-map.md`: **predictions, not measurements, in dB relative to one speaker heard at 1 m**.
 
 ## Reproduction

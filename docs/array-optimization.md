@@ -1,5 +1,7 @@
 # Geometric optimization of loudspeaker arrays
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 Comparison of regular, perturbed, spiral, ring and optimized layouts with 8, 16 and 32 elements on a flat panel, separating the effect of the **number of elements**, of the **aperture** and of the **spatial distribution**. The acoustic model is the one of the earlier missions: ideal omnidirectional point sources, free field, `1/r` attenuation, real focusing delays, speed of sound 343 m/s, spectral integration by weighted mean-square pressures (`docs/broadband-study.md`). **Only the speaker positions are optimized.** Nothing here is a measurement, and the 65 mm driver diameter is a study hypothesis, not a measured dimension of the hardware: replace it with the real driver size before any manufacturing decision.
 
 ## Method

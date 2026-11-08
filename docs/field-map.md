@@ -1,5 +1,7 @@
 # Two-dimensional field maps
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 `bean-lab field-map` computes the steady-state pressure of a sinusoidal tone on a plane in front of the array and renders three top-view PNG maps: simultaneous emission, focused emission, and their difference in dB. It needs no audio hardware.
 
 **The maps are predictions of a free-field, point-source model, in dB relative to one speaker heard at 1 m. They are not measurements and not dB SPL.**

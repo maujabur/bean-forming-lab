@@ -1,5 +1,7 @@
 # Speaker geometry JSON
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 Two input formats; one internal representation: XYZ coordinates in **meters**. All JSON coordinates and pitches use **millimeters** (`"units": "mm"`).
 
 ## Integer grid

@@ -1,5 +1,7 @@
 # Bean Forming Lab
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 Open experimental laboratory for multichannel audio, loudspeaker arrays, beam steering and near-field focusing.
 
 ## Current hardware

@@ -1,5 +1,7 @@
 # Static acoustic focusing
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 `bean-lab focus` computes per-speaker delays so that wavefronts from all speakers arrive at one point in space at the same instant, and renders a multichannel WAV (or plays it). The focal point is fixed for the whole signal. Moving focus is not implemented.
 
 ## Pipeline (each stage is a separate function)

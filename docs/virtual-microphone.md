@@ -1,5 +1,7 @@
 # Virtual microphone
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 `bean-lab listen` simulates what an ideal omnidirectional microphone at any XYZ point would receive from the array, and writes it as a **mono** WAV. `bean-lab compare` runs four controlled experiments (A to D) and prints their levels. No audio hardware or hardware JSON is needed.
 
 **Everything here is the behavior predicted by a simple model, not an acoustic measurement.** Audible or numerical differences between the WAVs show what the model predicts, nothing more.
