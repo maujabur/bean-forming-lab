@@ -62,3 +62,5 @@ Default device: `hw:CARD=ICUSBAUDIO7D,DEV=0` at **48 kHz, S16_LE, 8 channels**, 
 `bean-lab campaign` runs the frequency, spacing and focal-direction series and writes comparison plates and indicators. Results and discussion: [docs/parametric-study.md](docs/parametric-study.md).
 ## Broadband study
 `bean-lab broadband-map` and `bean-lab broadband-campaign` compute time-averaged energy maps for band-limited signals (real focusing delays, mean-square combination of lines). Results and discussion: [docs/broadband-study.md](docs/broadband-study.md).
+## Three-dimensional field
+`bean-lab field-cuts` and `bean-lab field3d-campaign` compute XY/XZ/YZ cuts (and an optional coarse volume) of the broadband energy field through the focus, comparing the line array with planar layouts. Results and discussion: [docs/three-dimensional-field.md](docs/three-dimensional-field.md).
