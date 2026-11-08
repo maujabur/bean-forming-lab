@@ -7,3 +7,4 @@ dist/
 .venv/
 *.wav
 .vscode/settings.json
+results/

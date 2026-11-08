@@ -295,6 +295,10 @@ def main(argv: list[str] | None = None) -> int:
         return focus_main(argv[1:])
     if argv and argv[0] == "listen":
         return listen_main(argv[1:])
+    if argv and argv[0] == "campaign":
+        from .campaign import campaign_main
+
+        return campaign_main(argv[1:])
     if argv and argv[0] == "field-map":
         return field_map_main(argv[1:])
     if argv and argv[0] == "compare":
