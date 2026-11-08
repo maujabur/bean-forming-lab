@@ -1,0 +1,1 @@
+"""Minimal multichannel audio laboratory."""
