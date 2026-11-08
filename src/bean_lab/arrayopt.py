@@ -94,7 +94,10 @@ def optimize(n: int, panel: Panel, init: str, seed: int, cfg: OptConfig = OptCon
                     {k: v for k, v in cur.items() if k.startswith("J")})
     x0, x1, y0, y1 = panel.inner
     polish_start = int(cfg.iterations * (1 - cfg.polish_fraction))
+    hist_every = max(cfg.iterations // 20, 1)
     for it in range(cfg.iterations):
+        if it and it % hist_every == 0:  # recorded before the proposal, so a rejected proposal never skips a checkpoint
+            res.history.append((it, float(j_cur), float(best["J"])))
         frac = it / max(cfg.iterations - 1, 1)
         in_polish = it >= polish_start
         temp = 0.0 if in_polish else cfg.t0 * (cfg.t1 / cfg.t0) ** (it / max(polish_start, 1))
@@ -118,8 +121,7 @@ def optimize(n: int, panel: Panel, init: str, seed: int, cfg: OptConfig = OptCon
         if (it + 1) % cfg.refresh_every == 0:
             ev.refresh()
             j_cur = ev.objective()["J"]
-        if (it + 1) % max(cfg.iterations // 20, 1) == 0:
-            res.history.append((it + 1, float(j_cur), float(best["J"])))
+    res.history.append((cfg.iterations, float(j_cur), float(best["J"])))
     # the best state is re-evaluated from scratch (no accumulated rounding) before it is reported
     final = fast_setup(best_pos, cfg.foci, cfg.band, cfg.n_lines, cfg.spec, cfg.weights)
     comp = final.objective()

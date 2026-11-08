@@ -459,3 +459,31 @@ def test_committed_finalists_are_valid_and_loadable_by_the_existing_engine():
     from bean_lab.field import complex_field
     arr = load_array(folder / "O16-E420.json")
     assert abs(complex_field(arr, np.array([0.0, 0.0, 0.8]), 3000.0, gain=0.05)) > 0
+
+
+def test_history_has_every_checkpoint_and_ends_at_the_reported_objective():
+    r = optimize(8, P420, "rand", 4, OptConfig(iterations=400))
+    its = [h[0] for h in r.history]
+    assert len(r.history) == 20 and its[0] == 20 and its[-1] == 400  # a rejected proposal never skips a checkpoint
+    best = [h[2] for h in r.history]
+    assert all(a >= b - 1e-12 for a, b in zip(best, best[1:]))  # best-so-far never increases
+    assert best[-1] == pytest.approx(r.j_best, abs=1e-9)
+
+
+def test_optimized_layout_figures_use_each_layout_once(tmp_path):
+    from bean_lab.arraycampaign import best_non_optimized, entry_from_id, plot_generalization
+
+    base = {"status": "ok", "envelope": "E420", "campaigns": "A"}
+    rows = {}
+    for i, fam, n, sel in (("R8-E420", "R", 8, 0.13), ("V8-E420", "V", 8, 0.23), ("C8-E420", "C", 8, 0.18), ("O8-E420", "O", 8, 0.29)):
+        row = dict(base, id=i, family=fam, n=n)
+        for band in ("b1535", "b24", "b18"):
+            row[f"{band}.val.F10_mean"] = sel
+            row[f"{band}.train.F10_mean"] = sel
+        rows[i] = row
+    assert best_non_optimized(rows, 8, "E420") == "V8-E420"  # best of J, V, C; the regular grid is shown separately
+    assert best_non_optimized(rows, 16, "E420") is None
+    plot_generalization(rows, tmp_path / "g.png")  # the 16 and 32 element groups have no data: must not crash
+    assert (tmp_path / "g.png").read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+    e = entry_from_id("R8-E420", {"R8-E420": rows["R8-E420"]}, tmp_path)
+    assert np.array_equal(e.positions, regular_grid(2, 4, P420))

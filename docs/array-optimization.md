@@ -45,6 +45,7 @@ Files are written as array JSON compatible with `load_array` (extra `panel` and 
 .venv/bin/bean-lab array-evaluate --array /tmp/v16.json --foci val
 .venv/bin/bean-lab array-optimize --n 16 --init rand V --seeds 1 2 --iterations 10000 --out /tmp/o16.json
 .venv/bin/bean-lab array-campaign --profile full --outdir results/arrayopt --export-dir configs/arrays/optimized
+.venv/bin/bean-lab array-campaign --profile full --outdir results/arrayopt --optimization-figures   # redraws the optimized-layout figures of a finished campaign
 ```
 
 ### Power normalization
@@ -240,6 +241,66 @@ Optimized layouts against the best non-optimized layout of the same N and panel:
 
 (For 32 elements on the 420 mm panel there is no feasible non-optimized layout; O32-E420 is compared with the 520 mm layouts in the Pareto analysis.)
 
+#### Optimized layouts: arrangement and results
+
+Drawn to scale (65 mm discs), each row next to the regular grid and the best non-optimized layout of the same N and panel, with the validation selectivity (2-4 kHz) in the title. `O` was trained on 2-4 kHz, `Ow` on 1-8 kHz; the last panel of the 32-element row is `O32-E420`, the 32 drivers on the 420 mm panel.
+
+![Optimized layouts](images/arrayopt/layouts-optimized.png)
+
+What the layouts look like (extent of the centers, in mm): O8-E420 is compact and asymmetric (264 x 237) and leaves much of the panel unused, O16-E420 spreads over 342 x 334 in uneven rows, O32-E520 over 455 x 454, and O32-E420 fills the whole center square (355 x 355) with the drivers at the 65.0 mm minimum distance. None looks symmetric, and the restarts that gave them started from a random layout (O8, O32-E420), a perturbed grid (O16) or rings (O32-E520). The minimum distances reached are 82.2 mm (O8), 78.7 mm (O16), 67.1 mm (O32-E520) and 65.0 mm (O32-E420), i.e. the constraint only becomes active when the panel is nearly full.
+
+Results of the finalists (validation foci, share of ROI energy within +/-10 degrees; the diamonds are the training foci in the training band, which are nearly equal, so the layouts are not overfitted to their foci):
+
+![Optimized layouts: training, validation and other bands](images/arrayopt/generalization.png)
+
+- In the training band (2-4 kHz) the optimized layout beats the regular grid and the best non-optimized layout at every N (0.288 against 0.129 and 0.235 at 8 elements; 0.483 against 0.383 and 0.418 at 16; 0.662 against 0.500 and 0.594 at 32 on 520 mm; 0.582 for 32 on 420 mm, where no other layout fits).
+- In the other bands the advantage disappears or reverses at 16 elements (1.5-3.5 kHz: 0.403 against 0.416 for the regular grid; 1-8 kHz: 0.222 against 0.224 for the spiral); at 8 elements it holds (0.255 and 0.149 against 0.233 and 0.138 for the spiral).
+- `Ow` (trained on 1-8 kHz) gains nothing in 1-8 kHz (0.217 at 16 elements) and loses in 2-4 kHz (0.440 against 0.483).
+
+Convergence of the search. The five restarts of each size start from very different layouts and end close to each other, which is why the result is reported as a good layout and not as a global optimum:
+
+![Convergence](images/arrayopt/convergence.png)
+
+For 8 elements the final objective is 2.2021 to 2.2090 (0.3 %), for 16 elements 1.6420 to 1.6746 (2 %), for 32 elements on 520 mm 1.0910 to 1.1353 (4 %). The best start differs by size (a random layout for 8, the perturbed grid for 16, the rings for 32), so there is no universally best initial layout. Re-running the 15 restarts of these three plots reproduced the logged objectives exactly (difference 0.0 in every case): the optimization is deterministic for a given seed.
+
+The coordinates of the finalists are in `configs/arrays/optimized/*.json` (`O8-E420`, `Ow8-E420`, `O16-E420`, `Ow16-E420`, `O32-E420`, `O32-E520`). For the two smallest (panel centered at the origin, millimeters; the array is in the plane z = 0):
+
+**O8-E420** (8 elements)
+
+| Speaker | x (mm) | y (mm) |
+|---|---|---|
+| 1 | -122.1 | 100.1 |
+| 2 | 11.1 | -19.6 |
+| 3 | 72.6 | 96.5 |
+| 4 | -24.7 | 99.7 |
+| 5 | -16.7 | -136.6 |
+| 6 | 101.7 | -27.2 |
+| 7 | -162.3 | -28.4 |
+| 8 | -71.0 | -23.4 |
+
+**O16-E420** (16 elements)
+
+| Speaker | x (mm) | y (mm) |
+|---|---|---|
+| 1 | -8.9 | 56.7 |
+| 2 | -54.2 | -160.9 |
+| 3 | 70.9 | -47.5 |
+| 4 | 125.5 | -159.3 |
+| 5 | -145.9 | -152.4 |
+| 6 | 33.0 | -160.1 |
+| 7 | 75.7 | 61.0 |
+| 8 | 157.7 | -48.0 |
+| 9 | -174.1 | -46.6 |
+| 10 | -90.0 | 56.5 |
+| 11 | -88.2 | -52.3 |
+| 12 | 164.5 | 63.1 |
+| 13 | -177.4 | 61.8 |
+| 14 | -52.2 | 173.4 |
+| 15 | -9.5 | -51.8 |
+| 16 | 48.4 | 169.8 |
+
+The angular lobe maps and the orthogonal cuts of these layouts (O8, O16, O32) are in the "Spatial distribution of the lobes" and "Orthogonal cuts" figures above, in the last columns.
+
 Finalists (all Pareto-optimal layouts, the optimized ones, and the best non-optimized layout of each N and panel) are exported to `configs/arrays/optimized/*.json`, readable by every earlier command (`field-cuts`, `broadband-map`, ...).
 
 ### Pareto analysis
@@ -313,7 +374,7 @@ Sensitivity of the ranking to the angular window (2-4 kHz, validation foci), sho
 
 - Ideal point sources in a free field; no driver size or directivity, baffle, diffraction, room or channel mismatch.
 - The 65 mm diameter is a hypothesis; results scale with the real size.
-- The optimizer is a stochastic local search with restarts: it finds good layouts, not a proven global optimum. The five restarts of the 8-element case ended within 0.4 % of each other (many near-equivalent layouts); for 32 elements the starting layout mattered more.
+- The optimizer is a stochastic local search with restarts: it finds good layouts, not a proven global optimum. The five restarts of the 8-element case ended within 0.3 % of each other (many near-equivalent layouts); for 32 elements the starting layout mattered more.
 - Selectivity is a share of ROI energy in a +/-10 degree tube, not total radiated power; the ROI is limited to +/-60 x +/-40 degrees and 0.8 to 1.2 of the range.
 - Regions touching the ROI limits are lower bounds (all depths); no volumetric focal measure is claimed.
 - Ten foci (five per set), three bands, one panel shape; no 3-D optimization of the panel plane or of non-planar arrays.

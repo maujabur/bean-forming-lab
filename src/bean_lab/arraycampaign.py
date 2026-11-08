@@ -16,6 +16,7 @@ import csv
 import hashlib
 import json
 import math
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -216,7 +217,7 @@ def run_optimization(profile: Profile, outdir: Path, log=print) -> tuple[list[En
 
 # ---- plots --------------------------------------------------------------------------------------------------------------
 
-def plot_layouts(entries: list[Entry], path: Path, title: str, cols: int = 4) -> None:
+def plot_layouts(entries: list[Entry], path: Path, title: str, cols: int = 4, subtitles: dict | None = None) -> None:
     from matplotlib.figure import Figure
     from matplotlib.patches import Circle, Rectangle
 
@@ -239,6 +240,8 @@ def plot_layouts(entries: list[Entry], path: Path, title: str, cols: int = 4) ->
                 ax.add_patch(Circle((x, y), pn.diameter / 2, fc=FAMILY_COLORS[e.family], alpha=0.35, ec="black", lw=0.6))
                 ax.plot([x], [y], "k.", markersize=2)
             sub = f"min distance {e.meta.get('min_distance_mm', float('nan')):.1f} mm"
+            if subtitles and e.id in subtitles:
+                sub += "\n" + subtitles[e.id]
         else:
             ax.text(0, 0, "INFEASIBLE\n" + e.reason[:60], ha="center", va="center", fontsize=7, color="firebrick")
             sub = "not evaluated"
@@ -534,6 +537,132 @@ def run_campaign(profile: Profile, outdir: Path, export_dir: Path | None, log=pr
     return entries
 
 
+# ---- figures for the optimized layouts ---------------------------------------------------------------------------
+
+_ID = re.compile(r"^(R|J|V|C)(\d+)-(E\d+)(?:-s(\d+))?$")
+
+
+def entry_from_id(entry_id: str, rows: dict, export_dir: Path) -> Entry:
+    """Rebuild a baseline layout from its generator, or load an optimized one from its exported JSON."""
+    from .array_config import load_array
+    from .arraygen import positions_of
+
+    r = rows[entry_id]
+    if r["family"] in ("O", "Ow"):
+        e = Entry(entry_id, r["family"], int(r["n"]), r["envelope"], {"D"})
+        e.positions = positions_of(load_array(export_dir / f"{entry_id}.json"))
+        e.meta = dict(min_distance_mm=check_positions(e.positions, e.panel)["min_distance_mm"])
+        return e
+    m = _ID.match(entry_id)
+    return _make(m.group(1), int(m.group(2)), m.group(3), int(m.group(4) or 0), "")
+
+
+def best_non_optimized(rows: dict, n: int, env: str, exclude=("R",)) -> str | None:
+    pool = [i for i, r in rows.items() if r["status"] == "ok" and r["n"] == n and r["envelope"] == env
+            and r["family"] in ("R", "J", "V", "C") and r["family"] not in exclude]
+    return max(pool, key=lambda i: rows[i]["b24.val.F10_mean"]) if pool else None
+
+
+def plot_generalization(rows: dict, path: Path) -> None:
+    """Validation selectivity by band for the regular grid, the best non-optimized layout and the optimized ones."""
+    from matplotlib.figure import Figure
+
+    groups = [(8, "E420"), (16, "E420"), (32, "E520")]
+    fig = Figure(figsize=(15, 4.8))
+    axes = fig.subplots(1, 3)
+    bands = list(BANDS)
+    for ax, (n, env) in zip(axes, groups):
+        ids = [f"R{n}-{env}"] if f"R{n}-{env}" in rows else []
+        b = best_non_optimized(rows, n, env)
+        if b:
+            ids.append(b)
+        for i in (f"O{n}-{env}", f"Ow{n}-{env}", f"O{n}-E420"):
+            if i in rows and i not in ids:
+                ids.append(i)
+        if not ids:
+            ax.axis("off")
+            continue
+        width = 0.8 / len(ids)
+        for k, i in enumerate(ids):
+            fam = rows[i]["family"]
+            vals = [rows[i][f"{band}.val.F10_mean"] for band in bands]
+            x = np.arange(len(bands)) + (k - (len(ids) - 1) / 2) * width
+            ax.bar(x, vals, width, color=FAMILY_COLORS[fam], alpha=0.85 if fam != "R" else 0.6, label=i,
+                   hatch="//" if i.endswith("E420") and env == "E520" else None, edgecolor="black", linewidth=0.5)
+            if fam in ("O", "Ow"):  # training-foci value in the training band: no overfitting to the foci
+                tb = "b18" if fam == "Ow" else "b24"
+                ax.plot([x[bands.index(tb)]], [rows[i][f"{tb}.train.F10_mean"]], "kD", markersize=5)
+        ax.set_xticks(range(len(bands)))
+        ax.set_xticklabels([BAND_LABEL[b] + ("\n(training band of O)" if b == "b24" else "") for b in bands], fontsize=8)
+        ax.set_title(f"{n} elements, {env[1:]} mm panel" + (" (+ O32 on 420 mm, hatched)" if n == 32 else ""), fontsize=9)
+        ax.set_ylabel("share of ROI energy within +/-10 deg, validation foci")
+        ax.grid(axis="y", alpha=0.3)
+        ax.legend(fontsize=7)
+    fig.suptitle("Optimized layouts versus the regular grid and the best non-optimized layout (diamond = training foci in the training band)",
+                 fontsize=10)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(path, dpi=120, bbox_inches="tight")
+
+
+def plot_convergence(histories: dict, path: Path) -> None:
+    from matplotlib.figure import Figure
+
+    fig = Figure(figsize=(15, 4.4))
+    axes = fig.subplots(1, len(histories))
+    for ax, (title, hist) in zip(np.atleast_1d(axes), histories.items()):
+        for label, h in hist.items():
+            its = [a for a, _, _ in h]
+            ax.plot(its, [c for _, _, c in h], marker=".", label=f"{label}: {h[-1][2]:.4f}")
+        ax.set_title(title, fontsize=9)
+        ax.set_xlabel("iteration")
+        ax.set_ylabel("best objective J so far (training foci, lower is better)")
+        ax.grid(alpha=0.3)
+        ax.legend(fontsize=7, title="restart: final J")
+    fig.suptitle("Convergence of the restarts: very different starting layouts end at nearly the same objective", fontsize=10)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(path, dpi=120, bbox_inches="tight")
+
+
+def optimization_figures(outdir: Path, export_dir: Path, profile: Profile = PROFILES["full"], log=print) -> None:
+    """Figures of the optimized layouts from a finished campaign (no re-evaluation; restarts are re-run for the curves)."""
+    from .arrayopt import OptConfig, optimize
+
+    rows = {r["id"]: r for r in json.loads((outdir / "geometry-summary.json").read_text())}
+    plots = outdir / "plots"
+    plots.mkdir(exist_ok=True)
+    seq = []
+    subtitles = {}
+    for n, env in ((8, "E420"), (16, "E420"), (32, "E520")):
+        ids = [f"R{n}-{env}"]
+        b = best_non_optimized(rows, n, env)
+        if b:
+            ids.append(b)
+        for i in (f"O{n}-{env}", f"Ow{n}-{env}", f"O{n}-E420"):
+            if i in rows and i not in ids:
+                ids.append(i)
+        for i in ids[:4]:
+            seq.append(entry_from_id(i, rows, export_dir))
+            subtitles[i] = f"selectivity (validation, 2-4 kHz) {rows[i]['b24.val.F10_mean']:.3f}"
+    plot_layouts(seq, plots / "layouts-optimized.png", "Optimized layouts next to the regular grid and the best non-optimized layout", cols=4,
+                 subtitles=subtitles)
+    plot_generalization(rows, plots / "generalization.png")
+    logged = {(r["n"], r["envelope"], r["train_band"], r["init"], r["seed"]): r
+              for r in json.loads((outdir / "campaign-log.json").read_text())["restarts"] if "j_best" in r}
+    hist = {}
+    for n, env in ((8, "E420"), (16, "E420"), (32, "E520")):
+        cfg = OptConfig(iterations=profile.opt_iterations, band=BANDS["b24"], n_lines=9)
+        h = {}
+        for init, seed in profile.restarts:
+            if (n, env, "b24", init, seed) not in logged:
+                continue
+            res = optimize(n, ENVELOPES[env], init, seed, cfg)
+            ref = logged[(n, env, "b24", init, seed)]["j_best"]
+            log(f"  {n} {env} {init}{seed}: J {res.j_best:.6f} (logged {ref:.6f}, difference {abs(res.j_best - ref):.1e})")
+            h[f"{init}{seed}"] = [(0, res.j_start, res.j_start)] + res.history
+        hist[f"{n} elements, {env[1:]} mm, 2-4 kHz"] = h
+    plot_convergence(hist, plots / "convergence.png")
+
+
 # ---- command line --------------------------------------------------------------------------------------------------------------
 
 def _panel_args(p: argparse.ArgumentParser) -> None:
@@ -649,12 +778,20 @@ def array_campaign_main(argv: list[str]) -> int:
     p.add_argument("--outdir", type=Path, default=Path("results/arrayopt"))
     p.add_argument("--export-dir", type=Path, help="write finalist layouts (array JSON) here")
     p.add_argument("--estimate", action="store_true", help="print the estimated cost and exit")
+    p.add_argument("--optimization-figures", action="store_true",
+                   help="only redraw the optimized-layout figures from a finished campaign in --outdir (uses --export-dir)")
     a = p.parse_args(argv)
     profile = PROFILES[a.profile]
     est = estimate_seconds(profile)
     print(f"profile {profile.name}: {est['geometries']} baseline geometries, reference spacing {profile.df:g} Hz, "
           f"{profile.opt_iterations} iterations x {len(profile.restarts)} restarts; estimated about {est['total_minutes']:.0f} minutes")
     if a.estimate:
+        return 0
+    if a.optimization_figures:
+        try:
+            optimization_figures(a.outdir, a.export_dir or Path("configs/arrays/optimized"), profile)
+        except (OSError, ValueError, KeyError) as exc:
+            p.error(str(exc))
         return 0
     try:
         entries = run_campaign(profile, a.outdir, a.export_dir)
