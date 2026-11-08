@@ -1,8 +1,10 @@
-# Integer grid geometry
+# Speaker geometry JSON
 
-For interchangeable MDF/3D-printed speaker mounts, speaker geometry can be expressed as integer grid cells instead of direct XYZ coordinates.
+Two input formats; one internal representation: XYZ coordinates in **meters**. All JSON coordinates and pitches use **millimeters** (`"units": "mm"`).
 
-`configs/arrays/staggered-3-2-3.json` models eight speakers in this front-view pattern:
+## Integer grid
+
+`configs/arrays/staggered-3-2-3.json` models:
 
 ```text
 1 . 2 . 3
@@ -12,10 +14,21 @@ For interchangeable MDF/3D-printed speaker mounts, speaker geometry can be expre
 6 . 7 . 8
 ```
 
-`grid.pitch_mm` is the distance between adjacent **integer coordinate positions**, not necessarily the width of a speaker enclosure. For example, `pitch_mm: 30` yields 60 mm center spacing along each occupied row and 30 mm row offset. Choose the pitch only after measuring the enclosure and mounting constraints.
+Each speaker has `"cell": [column, row]`. Cell indices are **nonnegative integers**. Cell `[0, 0]` is the **top-left origin**, not the acoustic center. X increases right and Y increases down, viewed from the front; Z=0 for the flat grid.
 
-`cell: [column, row]` identifies the speaker center. X increases right, Y increases down in front view, and Z is constant for this flat grid. Optional `grid.origin_mm: [x, y, z]` offsets the array origin. The loader converts millimeters to meters and exposes the same `position_for(speaker)` API as the original `units: meters` XYZ format.
+The `grid` object accepts:
+- `pitch`: optional default spacing on both axes, in mm.
+- `pitch_x`: optional horizontal override.
+- `pitch_y`: optional vertical override.
 
-**Hardware routing is unaffected.** Speaker IDs remain 1–8 and are resolved separately through the hardware JSON. The software does not yet enforce enclosure clearance, mounting-hole geometry, or batten placement; these are mechanical design constraints.
+Both effective pitches must be defined, finite, and strictly positive. Thus `{"pitch":30}`, `{"pitch":30,"pitch_y":40}`, and `{"pitch_x":25,"pitch_y":40}` are all valid. A grid has a fixed origin; there is no `origin_mm` field.
 
-The pattern is a prototype layout, not a validated acoustic optimum.
+The pitch measures **distance between integer grid coordinates**, not enclosure width. With pitch 30 mm, columns 0 and 2 are 60 mm apart.
+
+## Free XYZ positions
+
+Omit `grid` and provide `"position": [x, y, z]` in millimeters for each speaker. Example: `{"speaker":3,"position":[32.5,58,0]}`. Free coordinates may be negative; the coordinate origin is simply a reference, not an acoustic center.
+
+Do not mix `cell` and `position` in one array. Both formats are normalized by `load_array()` to XYZ **meters**, exposed through `position_for(speaker)`.
+
+Speaker IDs are stable and independent of hardware PCM channel mapping. The loader does not enforce enclosure clearance or mechanical mounting constraints.
