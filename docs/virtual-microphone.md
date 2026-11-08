@@ -122,3 +122,7 @@ Differences: B - A = +0.164 dB, D - C = -0.126 dB, A - C = +9.259 dB, B - D = +9
 ## Limitations
 
 Free field only; no directivity, no frequency or phase response of real speakers or amplifier channels (the eight outputs have unmeasured gain and timing); no air absorption or temperature dependence (c is a parameter); sources are point-like although the real speakers are not; the microphone is a point, omnidirectional and ideal. Offline only, static focus, fixed `c`. Not binaural: this is a single point pressure signal.
+
+## Conclusion
+
+The virtual microphone gives a consistent free-field prediction (`1/r` with a 1 m reference, summed propagation and emission delays in one fractional delay), and its levels can be compared without normalizing the files. In the four experiments the effect of focusing on the 120 mm staggered array is small: +0.003 dB at the target at 1 kHz and +0.164 dB at 8 kHz, because the emission delays are under 10 microseconds. The level differences between target and off-target positions (0.281 dB at 1 kHz, 9.259 dB at 8 kHz) come mostly from the array's own interference pattern, not from the delays. These numbers are predictions of an ideal model, not an acoustic measurement; the next step is to measure a few points (the focus and one null) with a real microphone.

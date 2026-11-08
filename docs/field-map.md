@@ -82,3 +82,7 @@ The tests assert 2e-4. The small differences come from the finite-length interpo
 ## Limitations
 
 Free field, ideal omnidirectional point sources, equal amplitudes, no reflections, directivity, transducer response, air absorption, or temperature dependence; only steady-state sinusoids (no transients); a plane, with z fixed. The 10 mm grid undersamples nothing at 4 kHz (wavelength 85.75 mm) but fine nulls can fall between grid points; use `--probe` or a finer grid for exact values. Pixels are drawn without interpolation. Fan-shaped lobes and nulls are interference patterns of this particular aperture and spacing; they were not analyzed in terms of grating lobes here.
+
+## Conclusion
+
+For the 8-speaker line array at 4 kHz with the focus at (350, 800, 0) mm, focusing raises the energy at the focus from 12.49 to 19.76 dB (+7.26 dB), the coherent sum of the eight contributions, and redistributes it elsewhere (for example -20.9 dB on the array axis). The maximum of the map is next to the speakers (+26.68 dB at (110, 100) mm), not at the focus, so the global maximum must never be read as the focus. The maps agree with the virtual microphone (relative amplitude differences from 1.7e-6 to 1.2e-5), which validates the steady-state formula. Everything remains a free-field point-source prediction relative to one speaker at 1 m, not a measured sound pressure level.

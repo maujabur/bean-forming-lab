@@ -329,3 +329,7 @@ Memory also scales with the number of grid points: a 505 000-point volume with 3
 - A **wide planar** layout is the only one here that gives a compact peak, at the cost of grating lobes with 8 elements. The next experiment should compare it with non-uniform layouts, not with more regular scalings.
 - For the extreme lateral steering of the line (36 degrees), the **1.5-3.5 kHz** band is the best of the three tested.
 - None of this is a recommendation of a final geometry: mechanical size, driver directivity and the unmeasured channel mismatch are missing.
+
+## Conclusion
+
+The XY plane used until Mission 05 hid the main fact: the **line array focuses on a ring** around its own axis, not on a point. Along the ring the field is constant (checked numerically to 1e-12) and the focal band is 115 to 180 mm wide in the aperture direction but at least 1.2 m long around it. The 3-2-3 planar array removes the ring but its 120 mm aperture is too small to focus at 800 mm (+0.04 dB over simultaneous emission). Scaling it to 420 mm gives the only compact peak (a spot of about 100 to 150 mm), at the price of strong grating lobes with eight elements, so the peak is localized but the energy is not. For the extreme lateral focus of the line, the 1.5-3.5 kHz band is the best of the three tested (arc contrast 16.1 dB against 6.6 and 8.7 dB). No geometry here confines the energy along the beam within the sampled range. The simulator has no eight-element limit; the limits for larger arrays are those of the hardware.
