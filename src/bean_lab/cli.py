@@ -7,9 +7,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+import math
+
+import numpy as np
+
+from .analysis import check_full_scale, db_ratio, peak_abs, rms, steady_window
 from .array_config import load_array
 from .focus import SPEED_OF_SOUND, focus_delays, route_to_pcm, synthesize_speakers
 from .hardware_config import load_hardware
+from .microphone import receive
 from .signal import faded_tone, pulse, to_s16le, tone, write_wav
 
 
@@ -62,11 +68,144 @@ def focus_main(argv: list[str]) -> int:
     return 0
 
 
+MM_TRIPLE = dict(type=float, nargs=3, metavar=("X", "Y", "Z"))
+
+
+def _add_tone_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--array", type=Path, required=True, help="geometry JSON")
+    parser.add_argument("--frequency", type=float, default=1000.0)
+    parser.add_argument("--duration", type=float, default=2.0, help="emitted tone seconds")
+    parser.add_argument("--gain", type=float, default=0.05,
+                        help="per-speaker amplitude at the 1 m reference distance, (0, 1]")
+    parser.add_argument("--rate", type=int, default=48000)
+    parser.add_argument("--speed-of-sound", type=float, default=SPEED_OF_SOUND, help="m/s")
+
+
+def _mm_to_m(point) -> tuple[float, float, float]:
+    return tuple(v / 1000 for v in point)
+
+
+def _listen_case(args, array, mono, mic_mm, focused: bool, target_mm=None):
+    """Virtual-microphone reception of one experiment (all speakers get the same tone)."""
+    emission = None
+    if focused:
+        delays = focus_delays(array, _mm_to_m(target_mm), args.speed_of_sound)
+        emission = {d.speaker: d.delay for d in delays}
+    speakers = [e.speaker for e in array.elements]
+    return receive({s: mono for s in speakers}, array, _mm_to_m(mic_mm), args.rate,
+                   emission_delays=emission, speed_of_sound=args.speed_of_sound)
+
+
+def _write_mono(path: Path, signal: np.ndarray, rate: int) -> None:
+    write_wav(path, signal[:, None], rate)
+
+
+def listen_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="bean-lab listen",
+                                     description="Virtual omnidirectional microphone (free field, 1/r)")
+    _add_tone_args(parser)
+    parser.add_argument("--mode", choices=("simultaneous", "focused"), default="focused")
+    parser.add_argument("--target", help="focal point in mm (required for --mode focused)",
+                        **MM_TRIPLE)
+    parser.add_argument("--mic", required=True, help="microphone position in mm", **MM_TRIPLE)
+    parser.add_argument("--window", type=float, nargs=2, metavar=("T0", "T1"),
+                        help="analysis window in seconds (default: own steady-state window)")
+    parser.add_argument("--wav", type=Path, help="write the received mono signal as WAV")
+    args = parser.parse_args(argv)
+    try:
+        focused = args.mode == "focused"
+        if focused and args.target is None:
+            parser.error("--target is required for --mode focused")
+        array = load_array(args.array)
+        mono = faded_tone(sample_rate=args.rate, duration=args.duration,
+                          frequency=args.frequency, gain=args.gain)
+        rec = _listen_case(args, array, mono, args.mic, focused, args.target)
+        peak = check_full_scale(rec.signal)
+        if args.window:
+            i0, i1 = (round(t * args.rate) for t in args.window)
+            if not 0 <= i0 < i1 <= len(rec.signal):
+                raise ValueError("window must lie inside the recording")
+        else:
+            i0, i1 = steady_window([[p.arrival_time for p in rec.paths]], args.duration,
+                                   args.rate, args.frequency)
+        level = rms(rec.signal[i0:i1])
+    except (OSError, ValueError, KeyError) as exc:
+        parser.error(str(exc))
+
+    print(f"Mode {args.mode}; mic ({args.mic[0]:g}, {args.mic[1]:g}, {args.mic[2]:g}) mm; "
+          f"c = {args.speed_of_sound:g} m/s; {args.frequency:g} Hz; gain {args.gain:g} at 1 m")
+    print("speaker  distance_mm  travel_ms  emission_us  arrival_ms  gain(1/r)")
+    for p in rec.paths:
+        print(f"{p.speaker:7d}  {p.distance * 1000:11.3f}  {p.travel_time * 1e3:9.4f}  "
+              f"{p.emission_delay * 1e6:11.2f}  {p.arrival_time * 1e3:10.4f}  {p.gain:9.4f}")
+    _print_levels(level, peak, args.gain, i0, i1, args.rate)
+    if args.wav:
+        _write_mono(args.wav, rec.signal, args.rate)
+        print(f"Wrote {args.wav}: {len(rec.signal)} frames, 1 channel, {args.rate} Hz")
+    return 0
+
+
+def _print_levels(level, peak, gain, i0, i1, rate) -> None:
+    single = gain / math.sqrt(2)  # RMS of one speaker's sine at 1 m
+    print(f"Window: {i0 / rate:.9f} to {i1 / rate:.9f} s (samples {i0}:{i1})")
+    print(f"RMS {level:.6f} ({db_ratio(level, 1.0):.2f} dBFS, "
+          f"{db_ratio(level, single):+.2f} dB re one speaker at 1 m); "
+          f"peak {peak:.6f} ({db_ratio(peak, 1.0):.2f} dBFS)")
+
+
+def compare_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="bean-lab compare",
+        description="Experiments A-D: simultaneous/focused emission, mic on/off target")
+    _add_tone_args(parser)
+    parser.add_argument("--target", required=True, help="focal point and on-target mic, mm",
+                        **MM_TRIPLE)
+    parser.add_argument("--off-target", required=True, help="off-target mic, mm", **MM_TRIPLE)
+    parser.add_argument("--outdir", type=Path, required=True, help="directory for exp-A..D WAVs")
+    args = parser.parse_args(argv)
+    cases = {"A": (False, args.target, "simultaneous", "target"),
+             "B": (True, args.target, "focused", "target"),
+             "C": (False, args.off_target, "simultaneous", "off-target"),
+             "D": (True, args.off_target, "focused", "off-target")}
+    try:
+        array = load_array(args.array)
+        mono = faded_tone(sample_rate=args.rate, duration=args.duration,
+                          frequency=args.frequency, gain=args.gain)
+        recs = {k: _listen_case(args, array, mono, mic, foc, args.target)
+                for k, (foc, mic, _, _) in cases.items()}
+        peaks = {k: check_full_scale(r.signal) for k, r in recs.items()}  # nothing written if any clips
+        i0, i1 = steady_window([[p.arrival_time for p in r.paths] for r in recs.values()],
+                               args.duration, args.rate, args.frequency)
+        levels = {k: rms(r.signal[i0:i1]) for k, r in recs.items()}
+        args.outdir.mkdir(parents=True, exist_ok=True)
+        for k, r in recs.items():
+            _write_mono(args.outdir / f"exp-{k}.wav", r.signal, args.rate)
+    except (OSError, ValueError, KeyError) as exc:
+        parser.error(str(exc))
+
+    print(f"Common window: {i0 / args.rate:.9f} to {i1 / args.rate:.9f} s (samples {i0}:{i1}); "
+          f"{args.frequency:g} Hz, gain {args.gain:g} at 1 m, c = {args.speed_of_sound:g} m/s")
+    print("exp  emission      mic         rms       dBFS     peak  file")
+    for k, (_, _, emission, where) in cases.items():
+        print(f"{k:>3}  {emission:<12} {where:<10} {levels[k]:.6f} {db_ratio(levels[k], 1.0):8.2f} "
+              f"{peaks[k]:8.6f}  {args.outdir / f'exp-{k}.wav'}")
+    for label, a, b in (("B - A  focusing gain at target", "B", "A"),
+                        ("D - C  focusing effect off target", "D", "C"),
+                        ("A - C  simultaneous, target vs off", "A", "C"),
+                        ("B - D  focused, target vs off", "B", "D")):
+        print(f"{label}: {db_ratio(levels[a], levels[b]):+.3f} dB")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     if argv and argv[0] == "focus":
         return focus_main(argv[1:])
+    if argv and argv[0] == "listen":
+        return listen_main(argv[1:])
+    if argv and argv[0] == "compare":
+        return compare_main(argv[1:])
     parser = argparse.ArgumentParser(description="Minimal multichannel ALSA audio laboratory")
     parser.add_argument("mode", choices=("tone", "pulse"))
     selector = parser.add_mutually_exclusive_group(required=True)
