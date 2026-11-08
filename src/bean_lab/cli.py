@@ -7,12 +7,75 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
+
 from .array_config import load_array
+from .focus import SPEED_OF_SOUND, focus_delays, route_to_pcm, synthesize_speakers
 from .hardware_config import load_hardware
 from .signal import pulse, to_s16le, tone, write_wav
 
 
+FADE_SECONDS = 0.005  # raised-cosine fade at both ends of the focus tone
+
+
+def focus_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="bean-lab focus",
+                                     description="Static acoustic focusing of a tone at a 3-D point")
+    parser.add_argument("--array", type=Path, required=True, help="geometry JSON")
+    parser.add_argument("--hardware", type=Path, default=Path("configs/hardware/cmedia-0d8c-0102.json"))
+    parser.add_argument("--target", type=float, nargs=3, metavar=("X", "Y", "Z"), required=True,
+                        help="focal point in millimeters (same frame as the array)")
+    parser.add_argument("--frequency", type=float, default=1000.0)
+    parser.add_argument("--duration", type=float, default=2.0, help="tone seconds, before delay tail")
+    parser.add_argument("--gain", type=float, default=0.05, help="per-channel peak amplitude (0, 1]")
+    parser.add_argument("--rate", type=int, default=48000)
+    parser.add_argument("--speed-of-sound", type=float, default=SPEED_OF_SOUND, help="m/s")
+    parser.add_argument("--wav", type=Path, help="write a multichannel WAV instead of playing")
+    parser.add_argument("--device", help="override ALSA device (default from hardware JSON)")
+    args = parser.parse_args(argv)
+    try:
+        array = load_array(args.array)
+        hw = load_hardware(args.hardware)
+        focus = tuple(v / 1000 for v in args.target)
+        delays = focus_delays(array, focus, args.speed_of_sound)
+        mono = tone(channels=1, sample_rate=args.rate, duration=args.duration,
+                    frequency=args.frequency, gain=args.gain)[:, 0]
+        fade = min(round(FADE_SECONDS * args.rate), len(mono) // 2)
+        ramp = 0.5 - 0.5 * np.cos(np.pi * (np.arange(fade) + 0.5) / fade)
+        mono[:fade] *= ramp
+        mono[len(mono) - fade:] *= ramp[::-1]
+        samples = route_to_pcm(synthesize_speakers(mono, delays, args.rate), hw)
+    except (OSError, ValueError, KeyError) as exc:
+        parser.error(str(exc))
+
+    print(f"Focus ({args.target[0]:g}, {args.target[1]:g}, {args.target[2]:g}) mm, "
+          f"c = {args.speed_of_sound:g} m/s, {args.frequency:g} Hz, gain {args.gain:g}")
+    print("speaker  pcm  distance_mm  delay_us  delay_samples")
+    for d in delays:
+        print(f"{d.speaker:7d}  {hw.pcm_for(d.speaker):3d}  {d.distance * 1000:11.3f}  "
+              f"{d.delay * 1e6:8.2f}  {d.delay * args.rate:13.3f}")
+    if args.wav:
+        write_wav(args.wav, samples, args.rate)
+        print(f"Wrote {args.wav}: {len(samples)} frames, {samples.shape[1]} channels, {args.rate} Hz")
+        return 0
+    device = args.device or hw.device
+    cmd = ["aplay", "-q", "-D", device, "-t", "raw", "-f", "S16_LE",
+           "-c", str(samples.shape[1]), "-r", str(args.rate)]
+    print(f"Sending focused signal to {device}", file=sys.stderr)
+    try:
+        subprocess.run(cmd, input=to_s16le(samples), check=True)
+    except FileNotFoundError:
+        parser.exit(2, "aplay not found (install alsa-utils)\n")
+    except subprocess.CalledProcessError as exc:
+        parser.exit(2, f"aplay failed with exit code {exc.returncode}\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == "focus":
+        return focus_main(argv[1:])
     parser = argparse.ArgumentParser(description="Minimal multichannel ALSA audio laboratory")
     parser.add_argument("mode", choices=("tone", "pulse"))
     selector = parser.add_mutually_exclusive_group(required=True)
