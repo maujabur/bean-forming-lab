@@ -2,9 +2,9 @@
   "name": "linear-4",
   "units": "meters",
   "elements": [
-    {"id": "SPK1", "pcm_channel": 2, "position": [-0.09, 0, 0]},
-    {"id": "SPK2", "pcm_channel": 1, "position": [-0.03, 0, 0]},
-    {"id": "SPK3", "pcm_channel": 8, "position": [0.03, 0, 0]},
-    {"id": "SPK4", "pcm_channel": 7, "position": [0.09, 0, 0]}
+    {"speaker": 1, "position": [-0.09, 0, 0]},
+    {"speaker": 2, "position": [-0.03, 0, 0]},
+    {"speaker": 3, "position": [0.03, 0, 0]},
+    {"speaker": 4, "position": [0.09, 0, 0]}
   ]
 }
