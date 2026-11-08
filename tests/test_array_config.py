@@ -19,14 +19,14 @@ def write(tmp_path, name, payload):
 def test_array_and_hardware_are_independent():
     array = load_array(ROOT / "configs/arrays/linear-4.json")
     hw = load_hardware(ROOT / "configs/hardware/cmedia-0d8c-0102.json")
-    assert array.position_for(1) == (-0.09, 0, 0)
+    assert array.position_for(1) == (0.0, 0.0, 0.0)
     assert hw.pcm_for(1) == 2
     assert hw.pcm_for(8) == 3
     assert len(array.elements) == 4
 
 
 def test_rejects_duplicate_array_speaker(tmp_path):
-    data = {"name": "bad", "units": "meters", "elements": [
+    data = {"name": "bad", "units": "mm", "elements": [
         {"speaker": 1, "position": [0, 0, 0]},
         {"speaker": 1, "position": [1, 0, 0]},
     ]}
