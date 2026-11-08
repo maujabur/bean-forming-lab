@@ -86,3 +86,19 @@ def write_wav(path: str | Path, samples: np.ndarray, sample_rate: int = 48000) -
         wav.setsampwidth(2)
         wav.setframerate(sample_rate)
         wav.writeframes(to_s16le(samples))
+
+
+FADE_SECONDS = 0.005  # raised-cosine fade length used by faded_tone
+
+
+def faded_tone(*, sample_rate: int = 48000, duration: float = 2.0, frequency: float = 1000.0,
+               gain: float = 0.05, fade_seconds: float = FADE_SECONDS) -> np.ndarray:
+    """Mono tone (1-D) with raised-cosine fades at both ends, to avoid clicks."""
+    mono = tone(channels=1, sample_rate=sample_rate, duration=duration,
+                frequency=frequency, gain=gain)[:, 0]
+    fade = min(round(fade_seconds * sample_rate), len(mono) // 2)
+    if fade:
+        ramp = 0.5 - 0.5 * np.cos(np.pi * (np.arange(fade) + 0.5) / fade)
+        mono[:fade] *= ramp
+        mono[len(mono) - fade:] *= ramp[::-1]
+    return mono

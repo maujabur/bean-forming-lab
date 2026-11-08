@@ -7,15 +7,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-import numpy as np
-
 from .array_config import load_array
 from .focus import SPEED_OF_SOUND, focus_delays, route_to_pcm, synthesize_speakers
 from .hardware_config import load_hardware
-from .signal import pulse, to_s16le, tone, write_wav
-
-
-FADE_SECONDS = 0.005  # raised-cosine fade at both ends of the focus tone
+from .signal import faded_tone, pulse, to_s16le, tone, write_wav
 
 
 def focus_main(argv: list[str]) -> int:
@@ -38,12 +33,8 @@ def focus_main(argv: list[str]) -> int:
         hw = load_hardware(args.hardware)
         focus = tuple(v / 1000 for v in args.target)
         delays = focus_delays(array, focus, args.speed_of_sound)
-        mono = tone(channels=1, sample_rate=args.rate, duration=args.duration,
-                    frequency=args.frequency, gain=args.gain)[:, 0]
-        fade = min(round(FADE_SECONDS * args.rate), len(mono) // 2)
-        ramp = 0.5 - 0.5 * np.cos(np.pi * (np.arange(fade) + 0.5) / fade)
-        mono[:fade] *= ramp
-        mono[len(mono) - fade:] *= ramp[::-1]
+        mono = faded_tone(sample_rate=args.rate, duration=args.duration,
+                          frequency=args.frequency, gain=args.gain)
         samples = route_to_pcm(synthesize_speakers(mono, delays, args.rate), hw)
     except (OSError, ValueError, KeyError) as exc:
         parser.error(str(exc))
