@@ -1,0 +1,24 @@
+---
+---
+
+@import "minima";
+
+// The reports have wide tables and large figures: use more of the screen and let tables scroll sideways.
+.wrapper {
+  max-width: 1100px;
+}
+
+table {
+  display: block;
+  overflow-x: auto;
+  font-size: 0.8em;
+}
+
+img {
+  display: block;
+  margin: 1em auto;
+}
+
+.site-footer {
+  margin-top: 2em;
+}

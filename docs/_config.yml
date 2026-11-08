@@ -18,4 +18,4 @@ titles_from_headings:
   strip_title: true
   collections: false
 
-# The credit footer is in _includes/footer.html (overrides the theme footer on every page).
+# The header (title only, no automatic page list) and the credit footer are in _includes/ and override the theme.

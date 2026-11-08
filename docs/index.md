@@ -8,6 +8,7 @@ Open experimental laboratory for multichannel audio, loudspeaker arrays, beam st
 
 - [Speaker identity, geometry and hardware mapping](array-configuration.md)
 - [Speaker geometry JSON](grid-geometry.md)
+- [Verified analog channel mapping, C-Media USB 7.1](hardware/cmedia-0d8c-0102.md)
 
 ## Studies, in the order they were built
 

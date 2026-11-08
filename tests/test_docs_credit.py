@@ -4,10 +4,10 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 CREDIT = "*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*"
-DOCS = [ROOT / "README.md"] + sorted((ROOT / "docs").glob("*.md"))
+DOCS = [ROOT / "README.md"] + sorted((ROOT / "docs").rglob("*.md"))  # every Markdown file under docs/, subfolders included
 
 
-@pytest.mark.parametrize("path", DOCS, ids=lambda p: p.name)
+@pytest.mark.parametrize("path", DOCS, ids=lambda p: str(p.relative_to(ROOT)))
 def test_credit_line_follows_the_title(path):
     lines = path.read_text(encoding="utf-8").split("\n")
     assert lines[0].startswith("# "), "first line must be the level-1 title"

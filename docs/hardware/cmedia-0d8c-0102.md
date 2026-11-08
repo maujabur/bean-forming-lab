@@ -1,5 +1,7 @@
 # Verified analog channel mapping — C-Media USB 7.1
 
+*[maujabur/bean-forming-lab](https://github.com/maujabur/bean-forming-lab) · made with Kiro*
+
 Hardware: USB `0d8c:0102`, ALSA card `ICUSBAUDIO7D`.
 
 **Method:** direct 8-channel S16_LE / 48 kHz ALSA PCM playback with `bean-lab tone --channel N`, observed with headphones at each physical output. Indices are **1-based PCM channel numbers**, not `speaker-test -s` selectors.
