@@ -58,3 +58,5 @@ Default device: `hw:CARD=ICUSBAUDIO7D,DEV=0` at **48 kHz, S16_LE, 8 channels**, 
 `bean-lab listen` and `bean-lab compare` simulate what an ideal omnidirectional microphone would receive from the array (free field, 1/r), as mono WAV, with no hardware. See [docs/virtual-microphone.md](docs/virtual-microphone.md).
 ## Field maps
 `bean-lab field-map` renders 2-D steady-state pressure maps (simultaneous, focused, difference in dB) of a tone from the array, free-field model. See [docs/field-map.md](docs/field-map.md). PNG output needs matplotlib (`pip install -e '.[plot]'`).
+## Parametric study
+`bean-lab campaign` runs the frequency, spacing and focal-direction series and writes comparison plates and indicators. Results and discussion: [docs/parametric-study.md](docs/parametric-study.md).
