@@ -56,3 +56,5 @@ Default device: `hw:CARD=ICUSBAUDIO7D,DEV=0` at **48 kHz, S16_LE, 8 channels**, 
 `bean-lab focus` delays one tone per speaker so wavefronts coincide at a chosen point, and writes a multichannel WAV with no hardware attached. See [docs/static-focusing.md](docs/static-focusing.md).
 ## Virtual microphone
 `bean-lab listen` and `bean-lab compare` simulate what an ideal omnidirectional microphone would receive from the array (free field, 1/r), as mono WAV, with no hardware. See [docs/virtual-microphone.md](docs/virtual-microphone.md).
+## Field maps
+`bean-lab field-map` renders 2-D steady-state pressure maps (simultaneous, focused, difference in dB) of a tone from the array, free-field model. See [docs/field-map.md](docs/field-map.md). PNG output needs matplotlib (`pip install -e '.[plot]'`).
