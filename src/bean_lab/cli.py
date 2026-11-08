@@ -295,6 +295,10 @@ def main(argv: list[str] | None = None) -> int:
         return focus_main(argv[1:])
     if argv and argv[0] == "listen":
         return listen_main(argv[1:])
+    if argv and argv[0] in ("array-generate", "array-evaluate", "array-optimize", "array-campaign"):
+        from . import arraycampaign
+
+        return getattr(arraycampaign, argv[0].replace("-", "_") + "_main")(argv[1:])
     if argv and argv[0] in ("field-cuts", "field3d-campaign"):
         from .field3d import field3d_campaign_main, field_cuts_main
 
