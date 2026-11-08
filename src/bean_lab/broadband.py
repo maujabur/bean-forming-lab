@@ -26,7 +26,7 @@ import argparse
 import csv
 import json
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -459,7 +459,8 @@ def run_broadband_campaign(series: list[str], outdir: Path, region: Region, para
             ident = (bs.array, bs.focus_mm, bs.spectrum)
             if ident in cache:
                 log(f"{bs.series}/{bs.key}: same as {cache[ident].scenario.series}/{cache[ident].scenario.key} (reused)")
-                r = cache[ident]
+                # same data, relabeled for this series' plate (the stored copy keeps its first label)
+                r = replace(cache[ident], scenario=bs.as_scenario(), spec_scenario=bs)
             else:
                 log(f"{bs.series}/{bs.key}: {bs.label}, {bs.spectrum.lines()[0].size} lines")
                 r = run_broadband(bs, region, params, array_dir)
@@ -472,7 +473,7 @@ def run_broadband_campaign(series: list[str], outdir: Path, region: Region, para
         plate.fig.savefig(outdir / f"broadband-plate-{s}.png", dpi=140, bbox_inches="tight")
         build_arcs(PLATE_TITLES[s], results, titler=title_for).savefig(
             outdir / f"broadband-arcs-{s}.png", dpi=130, bbox_inches="tight")
-    unique = list({id(r): r for rs in plates.values() for r in rs}.values())
+    unique = list(cache.values())
     write_tables(outdir, unique)
     return unique
 
