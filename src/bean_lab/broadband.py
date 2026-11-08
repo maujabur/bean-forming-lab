@@ -146,6 +146,12 @@ def broadband_scenarios(series: str, df: float = 25.0) -> list[BroadbandScenario
     if series == "D":
         return [BroadbandScenario("D", f"x{x:g}", f"focus x = {x:g} mm, 1-8 kHz", base, (x, 800.0, 0.0), sp(1000, 8000))
                 for x in (210.0, 350.0, 800.0)]
+    if series == "R":  # monochromatic references (4 kHz tone) for the geometries and foci of G and D
+        ref = Spectrum(4000, 4000, df=df)
+        return ([BroadbandScenario("R", f"d{d:03d}", f"tone 4 kHz, d = {d} mm", f"line-8-{d}mm.json", focus, ref)
+                 for d in (30, 120)]
+                + [BroadbandScenario("R", f"x{x:g}", f"tone 4 kHz, focus x = {x:g} mm", base, (x, 800.0, 0.0), ref)
+                   for x in (210.0, 800.0)])
     raise ValueError(f"unknown series {series!r}")
 
 
@@ -395,7 +401,7 @@ def title_for(r: BroadbandResult) -> str:
     ind = r.indicators
     if r.scenario.series == "G":
         extra = f"d/lambda = {ind['spacing_over_wavelength_min']:.2f}-{ind['spacing_over_wavelength_max']:.2f}"
-    elif r.scenario.series == "D":
+    elif r.scenario.series in ("D", "R"):
         extra = f"angle {ind['focus_angle_deg']:+.1f} deg, range {ind['focus_range_mm']:.0f} mm"
     else:
         extra = f"d/lambda = {ind['spacing_over_wavelength_min']:.2f}-{ind['spacing_over_wavelength_max']:.2f}"
@@ -438,7 +444,8 @@ def write_tables(outdir: Path, results: list[BroadbandResult]) -> None:
 
 PLATE_TITLES = {"B": "Series B - spectrum (8 speakers, 60 mm pitch, focus (350, 800) mm)",
                 "G": "Series G - geometry (8 speakers; bands 2-4 kHz and 1-8 kHz; absolute focus (350, 800) mm)",
-                "D": "Series D - focal direction (8 speakers, 60 mm pitch, 1-8 kHz, y = 800 mm)"}
+                "D": "Series D - focal direction (8 speakers, 60 mm pitch, 1-8 kHz, y = 800 mm)",
+                "R": "Series R - monochromatic references (4 kHz tone) for the geometries and foci of G and D"}
 
 
 def run_broadband_campaign(series: list[str], outdir: Path, region: Region, params: Params, df: float,
@@ -460,7 +467,8 @@ def run_broadband_campaign(series: list[str], outdir: Path, region: Region, para
                 write_broadband(outdir, r, params, individual)
             results.append(r)
         plates[s] = results
-        plate = build_plate(PLATE_TITLES[s], results, params, titler=title_for)
+        plate = build_plate(PLATE_TITLES[s], results, params, titler=title_for,
+                            level_label="relative energy, dB re one speaker at 1 m (model, not SPL)")
         plate.fig.savefig(outdir / f"broadband-plate-{s}.png", dpi=140, bbox_inches="tight")
         build_arcs(PLATE_TITLES[s], results, titler=title_for).savefig(
             outdir / f"broadband-arcs-{s}.png", dpi=130, bbox_inches="tight")
@@ -531,8 +539,8 @@ def broadband_map_main(argv: list[str]) -> int:
 
 def broadband_campaign_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="bean-lab broadband-campaign",
-                                     description="Broadband campaign: series B (spectrum), G (geometry), D (direction)")
-    parser.add_argument("--series", nargs="+", choices=("B", "G", "D", "all"), default=["all"])
+                                     description="Broadband campaign: series B (spectrum), G (geometry), D (direction), R (tone references)")
+    parser.add_argument("--series", nargs="+", choices=("B", "G", "D", "R", "all"), default=["all"])
     parser.add_argument("--outdir", type=Path, default=Path("results/broadband"))
     parser.add_argument("--array-dir", type=Path, default=ARRAY_DIR)
     parser.add_argument("--nx", type=int, default=401)
@@ -542,7 +550,7 @@ def broadband_campaign_main(argv: list[str]) -> int:
                         help="also write convergence.csv (spectral line spacing study on a map 4x coarser per axis)")
     _spectrum_args(parser)
     args = parser.parse_args(argv)
-    series = ["B", "G", "D"] if "all" in args.series else list(dict.fromkeys(args.series))
+    series = ["B", "G", "D", "R"] if "all" in args.series else list(dict.fromkeys(args.series))
     try:
         if not args.range_db > 0 or not args.diff_limit > 0:
             raise ValueError("--range-db and --diff-limit must be positive")

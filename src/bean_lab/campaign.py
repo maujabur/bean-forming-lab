@@ -330,7 +330,7 @@ class Plate:
     diff_images: list
 
 
-def build_plate(title: str, results: list, params: Params, titler=None) -> Plate:
+def build_plate(title: str, results: list, params: Params, titler=None, level_label: str | None = None) -> Plate:
     from matplotlib.figure import Figure
 
     from .fieldplot import LEVEL_LABEL, decorate, draw_difference, draw_level
@@ -369,7 +369,7 @@ def build_plate(title: str, results: list, params: Params, titler=None) -> Plate
                 ax.set_xticklabels([])
     cax1 = fig.add_subplot(gs[0:2, n])
     cb1 = fig.colorbar(level_images[0], cax=cax1, extend="both")
-    cb1.set_label(LEVEL_LABEL + f"; common scale {vmin:g}..{vmax:g} dB", fontsize=8)
+    cb1.set_label((level_label or LEVEL_LABEL) + f"; common scale {vmin:g}..{vmax:g} dB", fontsize=8)
     cb1.ax.tick_params(labelsize=7)
     cax2 = fig.add_subplot(gs[2, n])
     cb2 = fig.colorbar(diff_images[0], cax=cax2, extend="both")

@@ -428,3 +428,12 @@ def test_range_compensation_removes_pure_spreading(tmp_path):
     assert i["focal_region_area_cm2"] == pytest.approx(i["roi_cells"] * 25 * 25 / 100)
     assert i["focusing_gain_db"] == pytest.approx(0.0, abs=1e-9)  # nothing to focus with one source
     assert i["arc_foc_contrast_db"] is None and i["band_contrast_db"] is None
+
+
+def test_reference_series_are_tones_with_the_same_geometry_and_foci():
+    refs = broadband_scenarios("R")
+    assert [r.key for r in refs] == ["d030", "d120", "x210", "x800"]
+    assert all(r.spectrum.is_tone and r.spectrum.f_min == 4000.0 for r in refs)
+    pairs = {(r.array, r.focus_mm) for r in refs}
+    gd = {(b.array, b.focus_mm) for b in broadband_scenarios("G") + broadband_scenarios("D")}
+    assert pairs <= gd  # every reference tone has a broadband counterpart
