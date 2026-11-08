@@ -221,9 +221,9 @@ def analyze_cut(plane: str, u_mm, v_mm, e_sim, e_foc, focus_mm, center_mm, l_f: 
         else:
             out.update({f"area_{tag}_cm2": None})
         # widths along the two axis lines through the focus
-        lo, hi, lo_l, hi_l = _run(above[sv, :], roi[sv, :], su)
+        lo, hi, lo_l, hi_l = _run(above[iv, :], roi[iv, :], iu)
         out.update({f"width_u_{tag}_mm": float((hi - lo + 1) * step_mm), f"width_u_{tag}_limited": lo_l or hi_l})
-        lo, hi, lo_l, hi_l = _run(above[:, su], roi[:, su], sv)
+        lo, hi, lo_l, hi_l = _run(above[:, iu], roi[:, iu], iv)
         out.update({f"width_v_{tag}_mm": float((hi - lo + 1) * step_mm), f"width_v_{tag}_limited": lo_l or hi_l})
         out[f"roi_pct_above_m{tag}_foc"] = float(100 * np.mean(lev_f[roi] >= l_f - t))
         out[f"roi_pct_above_m{tag}_sim"] = float(100 * np.mean(lev_s[roi] >= l_f - t))
@@ -278,7 +278,7 @@ class CutResult:
 
 
 def aperture_center_mm(array: ArrayConfig) -> np.ndarray:
-    return np.mean([e.position for e in array.elements], axis=0) * 1000.0
+    return np.round(np.mean([e.position for e in array.elements], axis=0) * 1000.0, 9)
 
 
 def run_cuts(sc: CutScenario, params: Params, *, step_mm: float = 5.0, windows=None, volume: bool = False,
