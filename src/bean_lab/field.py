@@ -28,40 +28,67 @@ from .microphone import MIN_DISTANCE, REFERENCE_DISTANCE
 DEFAULT_FLOOR_DB = -60.0  # display floor, dB re one speaker at the reference distance
 
 
+class FieldGeometry:
+    """Distances and 1/r gains from every speaker to a fixed set of points.
+
+    Computing them once lets many frequencies (and emission-delay sets) be evaluated cheaply,
+    e.g. for broadband energy maps. `field` applies exactly the phasor formula in the module
+    docstring; `complex_field` is the one-shot wrapper.
+    """
+
+    def __init__(self, array: ArrayConfig, points: np.ndarray, *,
+                 speed_of_sound: float = SPEED_OF_SOUND, gain: float = 1.0,
+                 reference_distance: float = REFERENCE_DISTANCE) -> None:
+        points = np.asarray(points, dtype=np.float64)
+        if points.ndim < 1 or points.shape[-1] != 3 or not np.all(np.isfinite(points)):
+            raise ValueError("points must be finite XYZ coordinates, shape (..., 3)")
+        if not math.isfinite(speed_of_sound) or speed_of_sound <= 0:
+            raise ValueError("speed of sound must be finite and positive")
+        if not math.isfinite(gain) or gain <= 0:
+            raise ValueError("gain must be finite and positive")
+        if not math.isfinite(reference_distance) or reference_distance <= 0:
+            raise ValueError("reference distance must be finite and positive")
+        if not array.elements:
+            raise ValueError("array has no elements")
+        self.speed_of_sound = speed_of_sound
+        self.shape = points.shape[:-1]
+        self.speakers = [e.speaker for e in sorted(array.elements, key=lambda e: e.speaker)]
+        self._r: list[np.ndarray] = []
+        self._g: list[np.ndarray] = []
+        for element in sorted(array.elements, key=lambda e: e.speaker):
+            r = np.linalg.norm(points - np.asarray(element.position), axis=-1)
+            if np.any(r < MIN_DISTANCE):
+                bad = points[r < MIN_DISTANCE][0]
+                raise ValueError(f"point {tuple(bad)} coincides with speaker {element.speaker}")
+            self._r.append(r / speed_of_sound)  # travel time
+            self._g.append(gain * (reference_distance / r))
+
+    def field(self, frequency: float, emission_delays: Mapping[int, float] | None = None) -> np.ndarray:
+        if not math.isfinite(frequency) or frequency <= 0:
+            raise ValueError("frequency must be finite and positive")
+        emission_delays = emission_delays or {}
+        if set(emission_delays) - set(self.speakers):
+            raise ValueError("emission delays for speakers not in the array")
+        omega = 2 * np.pi * frequency
+        total = np.zeros(self.shape, dtype=np.complex128)
+        for speaker, travel, g in zip(self.speakers, self._r, self._g):
+            delay = float(emission_delays.get(speaker, 0.0))
+            if not math.isfinite(delay) or delay < 0:
+                raise ValueError(f"emission delay of speaker {speaker} must be finite and >= 0")
+            total += g * np.exp(-1j * omega * (delay + travel))
+        return total
+
+
 def complex_field(array: ArrayConfig, points: np.ndarray, frequency: float, *,
                   emission_delays: Mapping[int, float] | None = None,
                   speed_of_sound: float = SPEED_OF_SOUND, gain: float = 1.0,
                   reference_distance: float = REFERENCE_DISTANCE) -> np.ndarray:
     """Complex amplitude P at `points` (meters, shape (..., 3)); returns shape (...)."""
-    points = np.asarray(points, dtype=np.float64)
-    if points.ndim < 1 or points.shape[-1] != 3 or not np.all(np.isfinite(points)):
-        raise ValueError("points must be finite XYZ coordinates, shape (..., 3)")
     if not math.isfinite(frequency) or frequency <= 0:
         raise ValueError("frequency must be finite and positive")
-    if not math.isfinite(speed_of_sound) or speed_of_sound <= 0:
-        raise ValueError("speed of sound must be finite and positive")
-    if not math.isfinite(gain) or gain <= 0:
-        raise ValueError("gain must be finite and positive")
-    if not math.isfinite(reference_distance) or reference_distance <= 0:
-        raise ValueError("reference distance must be finite and positive")
-    if not array.elements:
-        raise ValueError("array has no elements")
-    emission_delays = emission_delays or {}
-    known = {e.speaker for e in array.elements}
-    if set(emission_delays) - known:
-        raise ValueError("emission delays for speakers not in the array")
-    omega = 2 * np.pi * frequency
-    total = np.zeros(points.shape[:-1], dtype=np.complex128)
-    for element in sorted(array.elements, key=lambda e: e.speaker):
-        r = np.linalg.norm(points - np.asarray(element.position), axis=-1)
-        if np.any(r < MIN_DISTANCE):
-            bad = points[r < MIN_DISTANCE][0]
-            raise ValueError(f"point {tuple(bad)} coincides with speaker {element.speaker}")
-        delay = float(emission_delays.get(element.speaker, 0.0))
-        if not math.isfinite(delay) or delay < 0:
-            raise ValueError(f"emission delay of speaker {element.speaker} must be finite and >= 0")
-        total += gain * (reference_distance / r) * np.exp(-1j * omega * (delay + r / speed_of_sound))
-    return total
+    geometry = FieldGeometry(array, points, speed_of_sound=speed_of_sound, gain=gain,
+                             reference_distance=reference_distance)
+    return geometry.field(frequency, emission_delays)
 
 
 def grid_axis(lo: float, hi: float, n: int, label: str) -> np.ndarray:

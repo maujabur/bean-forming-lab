@@ -121,10 +121,27 @@ def grating_angles(spacing: float, frequency: float, speed_of_sound: float, stee
 
 # ---- lobe analysis ----------------------------------------------------------------------------
 
-def analyze_lobes(theta: np.ndarray, level: np.ndarray, drop_db: float = 3.0) -> dict:
-    """Main lobe (around the global peak) and sidelobes of a sampled angular pattern."""
+def analyze_lobes(theta: np.ndarray, level: np.ndarray, drop_db: float = 3.0,
+                  reference_deg: float | None = None) -> dict:
+    """Main lobe and sidelobes of a sampled angular pattern.
+
+    The main lobe holds the global peak, or, if `reference_deg` is given, the lobe reached by
+    climbing uphill from that direction (the intended beam direction).
+    """
     n = len(level)
-    pk = int(np.argmax(level))
+    if reference_deg is None:
+        pk = int(np.argmax(level))
+    else:
+        pk = int(np.argmin(np.abs(theta - reference_deg)))
+        while True:
+            best = pk
+            if pk > 0 and level[pk - 1] > level[best]:
+                best = pk - 1
+            if pk < n - 1 and level[pk + 1] > level[best]:
+                best = pk + 1
+            if best == pk:
+                break
+            pk = best
     lo = pk
     while lo > 0 and level[lo - 1] <= level[lo]:
         lo -= 1
@@ -313,11 +330,12 @@ class Plate:
     diff_images: list
 
 
-def build_plate(title: str, results: list[ScenarioResult], params: Params) -> Plate:
+def build_plate(title: str, results: list, params: Params, titler=None) -> Plate:
     from matplotlib.figure import Figure
 
     from .fieldplot import LEVEL_LABEL, decorate, draw_difference, draw_level
 
+    titler = titler or column_title
     n = len(results)
     panel = 3.0
     fig = Figure(figsize=(panel * n + 1.4, panel * 3 + 1.3))
@@ -339,7 +357,7 @@ def build_plate(title: str, results: list[ScenarioResult], params: Params) -> Pl
                 im = draw_difference(ax, r.diff, r.x_mm, r.y_mm, params.diff_limit)
                 diff_images.append(im)
             decorate(ax, r.array, r.scenario.focus_mm, r.x_mm, r.y_mm,
-                     column_title(r) if i == 0 else None, legend=False, fontsize=8)
+                     titler(r) if i == 0 else None, legend=False, fontsize=8)
             ax.tick_params(labelsize=6)
             if j == 0:
                 ax.set_ylabel(f"{row_names[i]}\ny (mm)", fontsize=8)
@@ -363,9 +381,10 @@ def build_plate(title: str, results: list[ScenarioResult], params: Params) -> Pl
     return Plate(fig, level_images, diff_images)
 
 
-def build_arcs(title: str, results: list[ScenarioResult]):
+def build_arcs(title: str, results: list, titler=None):
     from matplotlib.figure import Figure
 
+    titler = titler or column_title
     n = len(results)
     cols = min(n, 4)
     rows = math.ceil(n / cols)
@@ -381,7 +400,7 @@ def build_arcs(title: str, results: list[ScenarioResult]):
             ax.plot([g], [top - 50 + 1.5], "^", color="tab:blue", markersize=5)
         ax.set_ylim(top - 50, top)
         ax.set_xlim(-ARC_LIMIT_DEG, ARC_LIMIT_DEG)
-        ax.set_title(column_title(r).replace("\n", ", "), fontsize=8)
+        ax.set_title(titler(r).replace("\n", ", "), fontsize=8)
         ax.tick_params(labelsize=7)
         ax.grid(alpha=0.3)
         ax.set_xlabel("angle from +y axis (deg)", fontsize=8)
