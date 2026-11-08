@@ -1,0 +1,10 @@
+{
+  "name": "linear-4",
+  "units": "meters",
+  "elements": [
+    {"speaker": 1, "position": [-0.09, 0, 0]},
+    {"speaker": 2, "position": [-0.03, 0, 0]},
+    {"speaker": 3, "position": [0.03, 0, 0]},
+    {"speaker": 4, "position": [0.09, 0, 0]}
+  ]
+}
