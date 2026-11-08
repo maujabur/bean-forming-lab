@@ -8,8 +8,11 @@
   max-width: 1100px;
 }
 
+// Tables hug their content (so the border matches the table) but never exceed the page: wider ones scroll.
 table {
   display: block;
+  width: max-content;
+  max-width: 100%;
   overflow-x: auto;
   font-size: 0.8em;
 }
