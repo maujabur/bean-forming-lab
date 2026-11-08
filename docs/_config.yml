@@ -1,0 +1,21 @@
+# GitHub Pages (Settings -> Pages -> Deploy from a branch -> main, folder /docs)
+title: Bean Forming Lab
+description: Open experimental laboratory for multichannel audio, loudspeaker arrays, beam steering and near-field focusing.
+theme: minima
+
+plugins:
+  - jekyll-relative-links
+  - jekyll-titles-from-headings
+
+# Links between the .md files keep working both on GitHub and on the site.
+relative_links:
+  enabled: true
+  collections: false
+
+# The page title comes from the first "# " heading; strip it from the body so it is not shown twice.
+titles_from_headings:
+  enabled: true
+  strip_title: true
+  collections: false
+
+# The credit footer is in _includes/footer.html (overrides the theme footer on every page).
