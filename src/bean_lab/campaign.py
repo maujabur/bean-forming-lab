@@ -11,11 +11,14 @@ Indicator definitions (all levels in dB re one speaker at 1 m):
     A constant-range cut removes the geometric 1/r trend. Main lobe = lobe holding the arc peak,
     bounded by the first minima on each side; sidelobes = local maxima outside it;
     contrast = arc peak - highest sidelobe.
-  * map secondary maximum: highest level in the band 0.75 R_f <= r <= 1.25 R_f (r from the
-    aperture center) outside the angular sector of the focused main lobe. The band is far from
-    the near field; the residual 1/r variation inside it is at most +1.9 / -2.5 dB.
-Maxima and the map secondary maximum are searched on a grid `oversample` times finer than the
-images and then refined locally, so deep and narrow lobes at high frequency are not missed.
+  * band sidelobe: the same arc analysis repeated on BAND_ARCS circles with radii from
+    (1 - BAND) R_f to (1 + BAND) R_f. Each circle excludes its own main lobe (so the focused
+    beam, an hourglass in the near field, is excluded as a whole) and levels are compensated for
+    spherical spreading, L + 20 log10(r / R_f), so lobes at different ranges are comparable.
+    The result is the highest compensated sidelobe in the band; contrast = focus level - it.
+    These circles are not clipped to the image region. The band stays away from the near field.
+Global maxima are searched on a grid `oversample` times finer than the images and refined
+locally, so deep and narrow lobes at high frequency are not missed.
 """
 
 from __future__ import annotations
@@ -35,7 +38,8 @@ from .field import (DEFAULT_FLOOR_DB, complex_field, difference_db, field_maps, 
 from .focus import SPEED_OF_SOUND, focus_delays
 
 ARRAY_DIR = Path("configs/arrays")
-BAND = 0.25  # secondary-lobe band: (1 - BAND) R_f .. (1 + BAND) R_f
+BAND = 0.25  # sidelobe band: (1 - BAND) R_f .. (1 + BAND) R_f
+BAND_ARCS = 21
 ARC_LIMIT_DEG = 80.0
 ARC_STEP_DEG = 0.02
 
@@ -143,8 +147,9 @@ def analyze_lobes(theta: np.ndarray, level: np.ndarray, drop_db: float = 3.0) ->
 
     left = cross(a, a - 1) if a > 0 else float(theta[0])
     right = cross(b, b + 1) if b < n - 1 else float(theta[-1])
+    eps = 1e-9  # ignore floating-point noise on flat tails / the dB floor
     side = [i for i in range(1, n - 1) if (i < lo or i > hi)
-            and level[i] > level[i - 1] and level[i] >= level[i + 1]]
+            and level[i] > level[i - 1] + eps and level[i] >= level[i + 1] - eps]
     best = max(side, key=lambda i: level[i]) if side else None
     return dict(peak_deg=float(theta[pk]), peak_db=float(level[pk]), beamwidth_deg=right - left,
                 beamwidth_open=bool(a == 0 or b == n - 1),
@@ -266,20 +271,23 @@ def run_scenario(sc: Scenario, region: Region, params: Params, array_dir: Path =
                     f"max_{tag}_x_mm": gx * 1000, f"max_{tag}_y_mm": gy * 1000,
                     f"max_{tag}_range_mm": math.dist((gx, gy), (cx, cy)) * 1000,
                     f"max_{tag}_grid_db": float(20 * np.log10(a[iy, ix] / gain))})
-    r = np.hypot(xx - cx, yy - cy)
-    ang = np.degrees(np.arctan2(xx - cx, yy - cy))
-    band = (r >= (1 - BAND) * r_f) & (r <= (1 + BAND) * r_f)
-    outside = (ang < lobes_f["null_left_deg"]) | (ang > lobes_f["null_right_deg"])
-    region_mask = band & outside
-    ind.update(secondary_map_db=None, secondary_map_x_mm=None, secondary_map_y_mm=None,
-               secondary_map_contrast_db=None)
-    if region_mask.any():
-        masked = np.where(region_mask, af, -np.inf)
-        iy, ix = np.unravel_index(int(np.argmax(masked)), masked.shape)
-        gx, gy, val = refine_peak(array, f, emission, kw, float(xf[ix]), float(yf[iy]), z, 1.5 * step, bounds)
-        sec = float(20 * np.log10(val / gain))
-        ind.update(secondary_map_db=sec, secondary_map_x_mm=gx * 1000, secondary_map_y_mm=gy * 1000,
-                   secondary_map_contrast_db=l_f - sec)
+    # sidelobes in the focal band, one circle per radius (each excludes its own main lobe)
+    best = None
+    for rad in r_f * np.linspace(1 - BAND, 1 + BAND, BAND_ARCS):
+        pts_r = _arc_points((cx, cy), rad, theta, z)
+        lev = level_db(complex_field(array, pts_r, f, emission_delays=emission, **kw), gain,
+                       params.floor_db) + 20 * np.log10(rad / r_f)
+        lb = analyze_lobes(theta, lev)
+        if lb["sidelobe_db"] is not None and (best is None or lb["sidelobe_db"] > best[0]):
+            best = (lb["sidelobe_db"], float(rad), lb["sidelobe_deg"])
+    ind.update(band_sidelobe_db=None, band_sidelobe_range_mm=None, band_sidelobe_deg=None,
+               band_sidelobe_x_mm=None, band_sidelobe_y_mm=None, band_contrast_db=None)
+    if best is not None:
+        db, rad, deg = best
+        ind.update(band_sidelobe_db=db, band_sidelobe_range_mm=rad * 1000, band_sidelobe_deg=deg,
+                   band_sidelobe_x_mm=(cx + rad * math.sin(math.radians(deg))) * 1000,
+                   band_sidelobe_y_mm=(cy + rad * math.cos(math.radians(deg))) * 1000,
+                   band_contrast_db=l_f - db)
     return ScenarioResult(sc, array, x * 1000, y * 1000, maps.simultaneous, maps.focused,
                           lev_s, lev_f, diff, ind, theta, arc_s, arc_f, grating)
 
