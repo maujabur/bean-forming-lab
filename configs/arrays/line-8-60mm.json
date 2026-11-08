@@ -1,0 +1,70 @@
+{
+  "name": "line-8-60mm",
+  "units": "mm",
+  "elements": [
+    {
+      "speaker": 1,
+      "position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "speaker": 2,
+      "position": [
+        60,
+        0,
+        0
+      ]
+    },
+    {
+      "speaker": 3,
+      "position": [
+        120,
+        0,
+        0
+      ]
+    },
+    {
+      "speaker": 4,
+      "position": [
+        180,
+        0,
+        0
+      ]
+    },
+    {
+      "speaker": 5,
+      "position": [
+        240,
+        0,
+        0
+      ]
+    },
+    {
+      "speaker": 6,
+      "position": [
+        300,
+        0,
+        0
+      ]
+    },
+    {
+      "speaker": 7,
+      "position": [
+        360,
+        0,
+        0
+      ]
+    },
+    {
+      "speaker": 8,
+      "position": [
+        420,
+        0,
+        0
+      ]
+    }
+  ]
+}
