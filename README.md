@@ -54,3 +54,5 @@ Default device: `hw:CARD=ICUSBAUDIO7D,DEV=0` at **48 kHz, S16_LE, 8 channels**, 
 - Model steering/focusing geometries and compare with microphone measurements.
 ## Static focusing
 `bean-lab focus` delays one tone per speaker so wavefronts coincide at a chosen point, and writes a multichannel WAV with no hardware attached. See [docs/static-focusing.md](docs/static-focusing.md).
+## Virtual microphone
+`bean-lab listen` and `bean-lab compare` simulate what an ideal omnidirectional microphone would receive from the array (free field, 1/r), as mono WAV, with no hardware. See [docs/virtual-microphone.md](docs/virtual-microphone.md).
