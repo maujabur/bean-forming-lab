@@ -4,39 +4,43 @@ from pathlib import Path
 import pytest
 
 from bean_lab.array_config import load_array
+from bean_lab.hardware_config import load_hardware
 
 
-def write(tmp_path, payload):
-    path = tmp_path / "array.json"
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def write(tmp_path, name, payload):
+    path = tmp_path / name
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path
 
 
-def valid():
-    return {"name": "test", "units": "meters", "elements": [
-        {"id": "A", "pcm_channel": 2, "position": [0, 0, 0]},
-        {"id": "B", "pcm_channel": 7, "position": [0.06, 0, 0]},
+def test_array_and_hardware_are_independent():
+    array = load_array(ROOT / "configs/arrays/linear-4.json")
+    hw = load_hardware(ROOT / "configs/hardware/cmedia-0d8c-0102.json")
+    assert array.position_for(1) == (-0.09, 0, 0)
+    assert hw.pcm_for(1) == 2
+    assert hw.pcm_for(8) == 3
+    assert len(array.elements) == 4
+
+
+def test_rejects_duplicate_array_speaker(tmp_path):
+    data = {"name": "bad", "units": "meters", "elements": [
+        {"speaker": 1, "position": [0, 0, 0]},
+        {"speaker": 1, "position": [1, 0, 0]},
     ]}
+    with pytest.raises(ValueError, match="duplicate"):
+        load_array(write(tmp_path, "array.json", data))
 
 
-def test_example():
-    path = Path(__file__).resolve().parents[1] / "configs/arrays/linear-4.json"
-    config = load_array(path)
-    assert len(config.elements) == 4
-    assert config.pcm_for("SPK1") == 2
-    assert config.element_for(7).id == "SPK4"
-
-
-@pytest.mark.parametrize("change", [
-    lambda d: d["elements"][1].update(pcm_channel=2),
-    lambda d: d["elements"][1].update(id="A"),
-    lambda d: d["elements"][0].update(pcm_channel=0),
-    lambda d: d["elements"][0].update(position=[0, 0]),
-    lambda d: d.update(units="centimeters"),
-    lambda d: d["elements"][0].update(position=[float("nan"), 0, 0]),
+@pytest.mark.parametrize("mapping", [
+    {"1": 2, "2": 2},
+    {"1": 0},
+    {"1": 9},
+    {"0": 1},
 ])
-def test_rejects_invalid(tmp_path, change):
-    data = valid()
-    change(data)
+def test_rejects_bad_hardware_mapping(tmp_path, mapping):
+    data = {"name": "test", "device": "hw:1,0", "channels": 8, "speaker_to_pcm": mapping}
     with pytest.raises(ValueError):
-        load_array(write(tmp_path, data))
+        load_hardware(write(tmp_path, "hardware.json", data))
