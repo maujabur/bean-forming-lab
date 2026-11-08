@@ -1,0 +1,91 @@
+{
+ "name": "Ow8-E420",
+ "units": "mm",
+ "panel": {
+  "width": 420,
+  "height": 420,
+  "margin": 32.5,
+  "min_distance": 65.0,
+  "diameter": 65.0,
+  "note": "driver diameter is a study hypothesis, not a measured dimension"
+ },
+ "meta": {
+  "family": "Ow",
+  "n": 8,
+  "envelope": "E420",
+  "pareto": false,
+  "selectivity": 0.20897157991466087,
+  "note": "reference diameter 65 mm is a hypothesis",
+  "init": "C",
+  "seed": 0,
+  "train_band": "b18",
+  "j_best": 2.486963204549245,
+  "min_distance_mm": 87.48794705395957
+ },
+ "elements": [
+  {
+   "speaker": 1,
+   "position": [
+    -47.42653441145978,
+    -15.433191064054213,
+    0.0
+   ]
+  },
+  {
+   "speaker": 2,
+   "position": [
+    135.68849335697664,
+    10.921498479707088,
+    0.0
+   ]
+  },
+  {
+   "speaker": 3,
+   "position": [
+    -33.853118076992274,
+    -128.48166149755434,
+    0.0
+   ]
+  },
+  {
+   "speaker": 4,
+   "position": [
+    -177.396755330917,
+    19.563563702397552,
+    0.0
+   ]
+  },
+  {
+   "speaker": 5,
+   "position": [
+    46.95378552871588,
+    121.76896756058443,
+    0.0
+   ]
+  },
+  {
+   "speaker": 6,
+   "position": [
+    38.843528363717624,
+    1.2076865874526188,
+    0.0
+   ]
+  },
+  {
+   "speaker": 7,
+   "position": [
+    -56.57269643741271,
+    176.79724039457037,
+    0.0
+   ]
+  },
+  {
+   "speaker": 8,
+   "position": [
+    -74.40630837872777,
+    67.79079992647425,
+    0.0
+   ]
+  }
+ ]
+}

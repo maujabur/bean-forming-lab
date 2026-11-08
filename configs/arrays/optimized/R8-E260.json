@@ -1,0 +1,89 @@
+{
+ "name": "R8-E260",
+ "units": "mm",
+ "panel": {
+  "width": 260,
+  "height": 260,
+  "margin": 32.5,
+  "min_distance": 65.0,
+  "diameter": 65.0,
+  "note": "driver diameter is a study hypothesis, not a measured dimension"
+ },
+ "meta": {
+  "family": "R",
+  "n": 8,
+  "envelope": "E260",
+  "pareto": true,
+  "selectivity": 0.17756323854072995,
+  "note": "reference diameter 65 mm is a hypothesis",
+  "rows": 2,
+  "cols": 4,
+  "min_distance_mm": 65.0
+ },
+ "elements": [
+  {
+   "speaker": 1,
+   "position": [
+    -97.5,
+    -97.5,
+    0.0
+   ]
+  },
+  {
+   "speaker": 2,
+   "position": [
+    -32.5,
+    -97.5,
+    0.0
+   ]
+  },
+  {
+   "speaker": 3,
+   "position": [
+    32.5,
+    -97.5,
+    0.0
+   ]
+  },
+  {
+   "speaker": 4,
+   "position": [
+    97.5,
+    -97.5,
+    0.0
+   ]
+  },
+  {
+   "speaker": 5,
+   "position": [
+    -97.5,
+    97.5,
+    0.0
+   ]
+  },
+  {
+   "speaker": 6,
+   "position": [
+    -32.5,
+    97.5,
+    0.0
+   ]
+  },
+  {
+   "speaker": 7,
+   "position": [
+    32.5,
+    97.5,
+    0.0
+   ]
+  },
+  {
+   "speaker": 8,
+   "position": [
+    97.5,
+    97.5,
+    0.0
+   ]
+  }
+ ]
+}

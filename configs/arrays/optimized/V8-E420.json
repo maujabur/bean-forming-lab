@@ -1,0 +1,90 @@
+{
+ "name": "V8-E420",
+ "units": "mm",
+ "panel": {
+  "width": 420,
+  "height": 420,
+  "margin": 32.5,
+  "min_distance": 65.0,
+  "diameter": 65.0,
+  "note": "driver diameter is a study hypothesis, not a measured dimension"
+ },
+ "meta": {
+  "family": "V",
+  "n": 8,
+  "envelope": "E420",
+  "pareto": false,
+  "selectivity": 0.20189847278105558,
+  "note": "reference diameter 65 mm is a hypothesis",
+  "radius_mm": 177.5,
+  "scale": 1.0,
+  "phase_deg": 0.0,
+  "min_distance_mm": 97.02250679140526
+ },
+ "elements": [
+  {
+   "speaker": 1,
+   "position": [
+    44.375,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "speaker": 2,
+   "position": [
+    -56.67399100835716,
+    51.91801824207711,
+    0.0
+   ]
+  },
+  {
+   "speaker": 3,
+   "position": [
+    8.674862690562948,
+    -98.84558605370236,
+    0.0
+   ]
+  },
+  {
+   "speaker": 4,
+   "position": [
+    71.4338949398503,
+    93.17286637601327,
+    0.0
+   ]
+  },
+  {
+   "speaker": 5,
+   "position": [
+    -131.08998273261645,
+    -23.18797214424586,
+    0.0
+   ]
+  },
+  {
+   "speaker": 6,
+   "position": [
+    124.17987541972388,
+    -78.99307194774651,
+    0.0
+   ]
+  },
+  {
+   "speaker": 7,
+   "position": [
+    -41.535738073999255,
+    154.5108753054235,
+    0.0
+   ]
+  },
+  {
+   "speaker": 8,
+   "position": [
+    -79.21315711962946,
+    -152.5201138018881,
+    0.0
+   ]
+  }
+ ]
+}

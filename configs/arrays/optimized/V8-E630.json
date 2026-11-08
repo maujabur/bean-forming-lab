@@ -1,0 +1,90 @@
+{
+ "name": "V8-E630",
+ "units": "mm",
+ "panel": {
+  "width": 630,
+  "height": 630,
+  "margin": 32.5,
+  "min_distance": 65.0,
+  "diameter": 65.0,
+  "note": "driver diameter is a study hypothesis, not a measured dimension"
+ },
+ "meta": {
+  "family": "V",
+  "n": 8,
+  "envelope": "E630",
+  "pareto": false,
+  "selectivity": 0.13715403245176272,
+  "note": "reference diameter 65 mm is a hypothesis",
+  "radius_mm": 282.5,
+  "scale": 1.0,
+  "phase_deg": 0.0,
+  "min_distance_mm": 154.41610235815205
+ },
+ "elements": [
+  {
+   "speaker": 1,
+   "position": [
+    70.625,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "speaker": 2,
+   "position": [
+    -90.19945047808957,
+    82.63008537119315,
+    0.0
+   ]
+  },
+  {
+   "speaker": 3,
+   "position": [
+    13.806471606107225,
+    -157.31762287420236,
+    0.0
+   ]
+  },
+  {
+   "speaker": 4,
+   "position": [
+    113.69056518595895,
+    148.2892098660493,
+    0.0
+   ]
+  },
+  {
+   "speaker": 5,
+   "position": [
+    -208.63616970120646,
+    -36.90480073661665,
+    0.0
+   ]
+  },
+  {
+   "speaker": 6,
+   "position": [
+    197.63839327364505,
+    -125.72136802951205,
+    0.0
+   ]
+  },
+  {
+   "speaker": 7,
+   "position": [
+    -66.10617468115375,
+    245.9116747818712,
+    0.0
+   ]
+  },
+  {
+   "speaker": 8,
+   "position": [
+    -126.07164442983282,
+    -242.74327971286417,
+    0.0
+   ]
+  }
+ ]
+}

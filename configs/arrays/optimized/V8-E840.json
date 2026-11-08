@@ -1,0 +1,90 @@
+{
+ "name": "V8-E840",
+ "units": "mm",
+ "panel": {
+  "width": 840,
+  "height": 840,
+  "margin": 32.5,
+  "min_distance": 65.0,
+  "diameter": 65.0,
+  "note": "driver diameter is a study hypothesis, not a measured dimension"
+ },
+ "meta": {
+  "family": "V",
+  "n": 8,
+  "envelope": "E840",
+  "pareto": false,
+  "selectivity": 0.08952218203568356,
+  "note": "reference diameter 65 mm is a hypothesis",
+  "radius_mm": 387.5,
+  "scale": 1.0,
+  "phase_deg": 0.0,
+  "min_distance_mm": 211.80969792489884
+ },
+ "elements": [
+  {
+   "speaker": 1,
+   "position": [
+    96.875,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "speaker": 2,
+   "position": [
+    -123.72490994782197,
+    113.34215250030918,
+    0.0
+   ]
+  },
+  {
+   "speaker": 3,
+   "position": [
+    18.938080521651504,
+    -215.78965969470235,
+    0.0
+   ]
+  },
+  {
+   "speaker": 4,
+   "position": [
+    155.9472354320676,
+    203.40555335608533,
+    0.0
+   ]
+  },
+  {
+   "speaker": 5,
+   "position": [
+    -286.18235666979643,
+    -50.621629328987446,
+    0.0
+   ]
+  },
+  {
+   "speaker": 6,
+   "position": [
+    271.0969111275662,
+    -172.4496641112776,
+    0.0
+   ]
+  },
+  {
+   "speaker": 7,
+   "position": [
+    -90.67661128830824,
+    337.3124742583189,
+    0.0
+   ]
+  },
+  {
+   "speaker": 8,
+   "position": [
+    -172.93013174003613,
+    -332.9664456238402,
+    0.0
+   ]
+  }
+ ]
+}

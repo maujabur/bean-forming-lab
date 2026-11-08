@@ -1,0 +1,90 @@
+{
+ "name": "V8-E520",
+ "units": "mm",
+ "panel": {
+  "width": 520,
+  "height": 520,
+  "margin": 32.5,
+  "min_distance": 65.0,
+  "diameter": 65.0,
+  "note": "driver diameter is a study hypothesis, not a measured dimension"
+ },
+ "meta": {
+  "family": "V",
+  "n": 8,
+  "envelope": "E520",
+  "pareto": false,
+  "selectivity": 0.17285337899693828,
+  "note": "reference diameter 65 mm is a hypothesis",
+  "radius_mm": 227.5,
+  "scale": 1.0,
+  "phase_deg": 0.0,
+  "min_distance_mm": 124.35279039461804
+ },
+ "elements": [
+  {
+   "speaker": 1,
+   "position": [
+    56.875,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "speaker": 2,
+   "position": [
+    -72.63849551775354,
+    66.54281211308474,
+    0.0
+   ]
+  },
+  {
+   "speaker": 3,
+   "position": [
+    11.118485983679271,
+    -126.68941311108333,
+    0.0
+   ]
+  },
+  {
+   "speaker": 4,
+   "position": [
+    91.55611886656871,
+    119.4187442284114,
+    0.0
+   ]
+  },
+  {
+   "speaker": 5,
+   "position": [
+    -168.01673843194502,
+    -29.71979528347005,
+    0.0
+   ]
+  },
+  {
+   "speaker": 6,
+   "position": [
+    159.1601220168292,
+    -101.244641510492,
+    0.0
+   ]
+  },
+  {
+   "speaker": 7,
+   "position": [
+    -53.23594598216806,
+    198.03506553230335,
+    0.0
+   ]
+  },
+  {
+   "speaker": 8,
+   "position": [
+    -101.52672250544059,
+    -195.48352614044813,
+    0.0
+   ]
+  }
+ ]
+}

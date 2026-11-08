@@ -442,3 +442,20 @@ def test_cli_evaluate_refuses_layouts_that_break_the_constraints(tmp_path):
     with pytest.raises(SystemExit) as exc:
         main(["array-evaluate", "--array", str(bad), "--df", "1000"])
     assert exc.value.code == 2
+
+
+def test_committed_finalists_are_valid_and_loadable_by_the_existing_engine():
+    folder = Path(__file__).resolve().parents[1] / "configs/arrays/optimized"
+    files = sorted(folder.glob("*.json"))
+    assert len(files) >= 10
+    for path in files:
+        obj = json.loads(path.read_text())
+        pn = obj["panel"]
+        panel = Panel(pn["width"], pn["height"], pn["margin"], pn["min_distance"], pn["diameter"])
+        pos = positions_of(load_array(path))
+        assert len(pos) == obj["meta"]["n"] and check_positions(pos, panel)["ok"], path.name
+        assert "hypothesis" in pn["note"]
+    # the engine of the earlier missions reads them directly
+    from bean_lab.field import complex_field
+    arr = load_array(folder / "O16-E420.json")
+    assert abs(complex_field(arr, np.array([0.0, 0.0, 0.8]), 3000.0, gain=0.05)) > 0
