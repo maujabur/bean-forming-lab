@@ -8,7 +8,8 @@ Coordinates are those of the project: millimeters in the CLI, meters inside, arr
 rotation. Cuts: XY (z = focus z), XZ (y = focus y), YZ (x = focus x); in each cut the first named
 axis is horizontal and the second vertical. All cuts pass through the focus.
 
-Region of interest and indicators (all levels dB re one speaker at 1 m, energy):
+Region of interest and indicators (all levels dB re one speaker at 1 m, energy; the ROI is also limited to
+within 80 degrees of the beam axis, as in the arc analyses of Missions 04 and 05):
   * Spreading compensation: Lc = L + 20 log10(r / R_f), r = distance from the aperture center,
     R_f = distance from the aperture center to the focus. The ROI is the shell 0.75 R_f <= r <= 1.25 R_f,
     which keeps the near field (dominated by 1/r) out of every statistic.
@@ -17,8 +18,10 @@ Region of interest and indicators (all levels dB re one speaker at 1 m, energy):
   * Width along an axis: length of the run of ROI cells with Lc >= L_f - X on the axis line through
     the focus, flagged `limited` when the run ends at the window edge or the ROI shell instead of
     falling below the threshold (the true width is then larger).
-  * Secondary maximum: highest local maximum of Lc in the ROI outside the (dilated) -3 dB focal
-    region; contrast = L_f - that maximum.
+  * Secondary maximum: highest interior local maximum of Lc (cells on the ROI edge are not peaks) outside
+    the (dilated) -3 dB focal region; contrast = L_f - that maximum. A lobe whose compensated level keeps
+    changing along the range has no such maximum; planes holding the aperture center and the beam
+    axis therefore also get an `arc` analysis: the Mission 04/05 constant-range arc inside that plane.
   * Energy shares use E_c = E (r / R_f)^2, the energy compensated for spherical spreading, as a
     fraction of the ROI total: the share inside the focal region and the share outside it.
 """
@@ -36,7 +39,7 @@ import numpy as np
 
 from .array_config import ArrayConfig, load_array
 from .broadband import (DISTRIBUTIONS, Spectrum, band_energy, connected_component, effective_level_db)
-from .campaign import ARRAY_DIR, BAND, Params
+from .campaign import ARC_LIMIT_DEG, ARRAY_DIR, BAND, Params
 from .field import FieldGeometry, difference_db
 from .focus import SPEED_OF_SOUND, focus_delays
 
@@ -166,17 +169,24 @@ def _run(above: np.ndarray, allowed: np.ndarray, i0: int) -> tuple[int, int, boo
 
 # ---- cut analysis ----------------------------------------------------------------------------------------------------------
 
+def roi_mask(coords, center_mm, r_f: float, front_axis: str):
+    """(r, roi): distance from the aperture center and the ROI shell, limited to within ARC_LIMIT_DEG of the beam axis."""
+    r = np.sqrt(sum((coords[i] - center_mm[i]) ** 2 for i in range(3)))
+    along = (coords[AXIS[front_axis]] - center_mm[AXIS[front_axis]]) / r
+    roi = (r >= (1 - BAND) * r_f) & (r <= (1 + BAND) * r_f) & (along >= math.cos(math.radians(ARC_LIMIT_DEG)))
+    return r, roi
+
+
 def analyze_cut(plane: str, u_mm, v_mm, e_sim, e_foc, focus_mm, center_mm, l_f: float,
-                params: Params, step_mm: float) -> dict:
+                params: Params, step_mm: float, front_axis: str = "y") -> dict:
     ua, va, na = PLANES[plane]
     uu, vv = np.meshgrid(u_mm, v_mm)
     coords = [None, None, None]
     coords[AXIS[ua]], coords[AXIS[va]] = uu, vv
     coords[AXIS[na]] = np.full_like(uu, focus_mm[AXIS[na]])
-    r = np.sqrt(sum((coords[i] - center_mm[i]) ** 2 for i in range(3)))
     r_f = math.dist(focus_mm, center_mm)
+    r, roi = roi_mask(coords, center_mm, r_f, front_axis)
     comp = 20 * np.log10(r / r_f)
-    roi = (r >= (1 - BAND) * r_f) & (r <= (1 + BAND) * r_f)
     lev_f = effective_level_db(e_foc, params.gain, params.floor_db) + comp
     lev_s = effective_level_db(e_sim, params.gain, params.floor_db) + comp
     ec_f, ec_s = e_foc * (r / r_f) ** 2, e_sim * (r / r_f) ** 2
@@ -230,13 +240,45 @@ def analyze_cut(plane: str, u_mm, v_mm, e_sim, e_foc, focus_mm, center_mm, l_f: 
     out["roi_pct_above_m10_foc"] = float(100 * np.mean(lev_f[roi] >= l_f - 10))
     out["roi_pct_above_m10_sim"] = float(100 * np.mean(lev_s[roi] >= l_f - 10))
     # secondary maxima: local maxima of the compensated level outside the dilated -3 dB region
-    cand = local_maxima(np.where(np.isfinite(lev_f), lev_f, -np.inf)) & roi & ~dilate(comp3, 2)
+    interior_roi = ~dilate(~roi, 1)  # cells whose 8 neighbors are all inside the ROI: ROI-edge values are not peaks
+    cand = local_maxima(np.where(roi, lev_f, -np.inf)) & roi & interior_roi & ~dilate(comp3, 2)
     out.update(secondary_db=None, secondary_u_mm=None, secondary_v_mm=None, contrast_db=None)
     if cand.any():
         masked = np.where(cand, lev_f, -np.inf)
         jv, ju = np.unravel_index(int(np.argmax(masked)), masked.shape)
         out.update(secondary_db=float(lev_f[jv, ju]), secondary_u_mm=float(u_mm[ju]), secondary_v_mm=float(v_mm[jv]),
                    contrast_db=float(l_f - lev_f[jv, ju]))
+    return out
+
+
+def plane_arc(plane: str, array: ArrayConfig, focus_mm, center_mm, front_axis: str, spectrum: Spectrum,
+              params: Params) -> dict | None:
+    """Constant-range arc (radius R_f about the aperture center) inside a plane that holds the center and
+    the beam axis; None for the other planes. theta runs from the beam axis toward the other in-plane axis."""
+    from .campaign import ARC_STEP_DEG, analyze_lobes
+
+    ua, va, na = PLANES[plane]
+    if front_axis not in (ua, va) or abs(center_mm[AXIS[na]] - focus_mm[AXIS[na]]) > 1e-6:
+        return None
+    lateral = va if front_axis == ua else ua
+    fi, li = AXIS[front_axis], AXIS[lateral]
+    r_f = math.dist(focus_mm, center_mm)
+    theta_f = math.degrees(math.atan2(focus_mm[li] - center_mm[li], focus_mm[fi] - center_mm[fi]))
+    theta = np.arange(-ARC_LIMIT_DEG, ARC_LIMIT_DEG + ARC_STEP_DEG / 2, ARC_STEP_DEG)
+    pts = np.empty((len(theta), 3))
+    pts[:, AXIS[na]] = focus_mm[AXIS[na]]
+    pts[:, fi] = center_mm[fi] + r_f * np.cos(np.radians(theta))
+    pts[:, li] = center_mm[li] + r_f * np.sin(np.radians(theta))
+    focus_m = tuple(c / 1000 for c in focus_mm)
+    e_s, e_f = energies(array, focus_m, spectrum, pts / 1000.0, params)
+    out = dict(lateral_axis=lateral, focus_angle_deg=theta_f)
+    for tag, e in (("foc", e_f), ("sim", e_s)):
+        lev = effective_level_db(e, params.gain, params.floor_db)
+        lb = analyze_lobes(theta, lev, reference_deg=theta_f)
+        out.update({f"{tag}_lobe_peak_db": lb["peak_db"], f"{tag}_lobe_peak_deg": lb["peak_deg"],
+                    f"{tag}_sidelobe_db": lb["sidelobe_db"], f"{tag}_sidelobe_deg": lb["sidelobe_deg"],
+                    f"{tag}_contrast_db": lb["contrast_db"],
+                    f"{tag}_share_10deg": float(e[np.abs(theta - theta_f) <= 10].sum() / e.sum())})
     return out
 
 
@@ -309,7 +351,8 @@ def run_cuts(sc: CutScenario, params: Params, *, step_mm: float = 5.0, windows=N
                                 effective_level_db(e_f, params.gain, params.floor_db),
                                 difference_db(np.sqrt(e_f), np.sqrt(e_s), params.gain, params.floor_db),
                                 float(sc.focus_mm[AXIS[PLANES[name][2]]]))
-        ind[name] = analyze_cut(name, u, v, e_s, e_f, sc.focus_mm, center, l_f, params, step_mm)
+        ind[name] = analyze_cut(name, u, v, e_s, e_f, sc.focus_mm, center, l_f, params, step_mm, sc.front_axis)
+        ind[name]["arc"] = plane_arc(name, array, sc.focus_mm, center, sc.front_axis, sc.spectrum, params)
     # widths per axis (the same axis line appears in two cuts; they agree by construction)
     ind["axis_width_mm"] = {t: {"x": ind["XY"].get(f"width_u_{t:g}_mm"), "y": ind["XY"].get(f"width_v_{t:g}_mm"),
                                 "z": ind["XZ"].get(f"width_v_{t:g}_mm")} for t in THRESHOLDS_DB}
@@ -331,9 +374,8 @@ def run_volume(sc: CutScenario, array: ArrayConfig, params: Params, windows, ste
     axes, pts = volume_points(sc.focus_mm, windows, step_mm)
     e_s, e_f = energies(array, focus_m, sc.spectrum, pts, params)
     gx, gy, gz = np.meshgrid(*axes, indexing="ij")
-    r = np.sqrt((gx - center_mm[0]) ** 2 + (gy - center_mm[1]) ** 2 + (gz - center_mm[2]) ** 2)
     r_f = math.dist(sc.focus_mm, center_mm)
-    shell = (r >= (1 - BAND) * r_f) & (r <= (1 + BAND) * r_f)
+    r, shell = roi_mask([gx, gy, gz], center_mm, r_f, sc.front_axis)
     lev = effective_level_db(e_f, params.gain, params.floor_db) + 20 * np.log10(r / r_f)
     lev_s = effective_level_db(e_s, params.gain, params.floor_db) + 20 * np.log10(r / r_f)
     ec_f, ec_s = e_f * (r / r_f) ** 2, e_s * (r / r_f) ** 2
@@ -611,7 +653,7 @@ def _fmt(v, f="{:.2f}"):
 
 
 def summary(results: list[CutResult]) -> None:
-    print("scenario       L_foc  gain   width x/y/z at -3 dB (mm)        cut areas -3 dB XY/XZ/YZ (cm2)    contrast XY/XZ/YZ (dB)")
+    print("scenario       L_foc  gain   width x/y/z at -3 dB (mm)        cut areas -3 dB XY/XZ/YZ (cm2)    contrast XY/XZ/YZ (dB)  in-plane arc contrast")
     for r in results:
         i = r.indicators
         w = i["axis_width_mm"]["3"]
@@ -619,7 +661,8 @@ def summary(results: list[CutResult]) -> None:
         wt = "/".join(f"{_fmt(w[a], '{:.0f}')}{'+' if lim[a] else ''}" for a in "xyz")
         ar = "/".join(_fmt(i[p].get("area_3_cm2"), "{:.0f}") for p in PLANES)
         ct = "/".join(_fmt(i[p].get("contrast_db"), "{:.1f}") for p in PLANES)
-        print(f"{i['scenario']:<13} {i['level_foc_focus_db']:6.2f} {i['focusing_gain_db']:+5.2f}   {wt:<30} {ar:<32} {ct}")
+        arcs = "/".join(_fmt((i[p].get("arc") or {}).get("foc_contrast_db"), "{:.1f}") if i[p].get("arc") else "-" for p in PLANES)
+        print(f"{i['scenario']:<13} {i['level_foc_focus_db']:6.2f} {i['focusing_gain_db']:+5.2f}   {wt:<30} {ar:<32} {ct:<14} {arcs}")
 
 
 def _common(parser: argparse.ArgumentParser) -> None:

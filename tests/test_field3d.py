@@ -271,7 +271,7 @@ def test_single_speaker_makes_the_whole_shell_the_focal_region():
     u, v = r.planes["XY"].u_mm, r.planes["XY"].v_mm
     uu, vv = np.meshgrid(u, v)
     rr = np.hypot(uu, vv)
-    shell = (rr >= 600) & (rr <= 1000)
+    shell = (rr >= 600) & (rr <= 1000) & (vv / rr >= math.cos(math.radians(80)))
     # no directivity: after compensating 1/r every ROI cell is within 0 dB of the focus level
     assert i["roi_cells"] == int(shell.sum()) and i["area_3_cm2"] == pytest.approx(shell.sum() * 400 / 100)
     assert i["roi_pct_above_m3_foc"] == pytest.approx(100.0) and i["contrast_db"] is None
@@ -425,10 +425,25 @@ def test_energy_share_uses_spreading_compensated_energy():
     e = 1e6 * (A / r) ** 2 * gain  # +60 dB keeps every level above the display floor
     focus = (0.0, 800.0, 0.0)
     l_f = float(effective_level_db(np.array(1e6 * (A / 800.0) ** 2), A, -60.0))
-    out = analyze_cut("XY", u, v, e, e, focus, np.zeros(3), l_f, PARAMS, 10.0)
-    roi = (r >= 600) & (r <= 1000)
+    out = analyze_cut("XY", u, v, e, e, focus, np.zeros(3), l_f, PARAMS, 10.0, "y")
+    roi = (r >= 600) & (r <= 1000) & (vv / r >= math.cos(math.radians(80)))
     sector = roi & (np.abs(ang) <= 10)
     expected = sector.sum() / (sector.sum() + 0.01 * (roi & ~sector).sum())
     assert out["energy_share_in_3_foc"] == pytest.approx(expected, rel=1e-9)  # E_c is uniform inside the sector
     assert out["area_3_cm2"] == pytest.approx(sector.sum() * 100 / 100)
     assert out["contrast_db"] is None or out["contrast_db"] > 15  # the 20 dB step is not counted as a lobe of the focus
+
+
+def test_in_plane_arcs_exist_only_in_planes_holding_the_center_and_beam_axis_and_match_mission_04():
+    r = run_cuts(scenario(LINE8, (350.0, 800.0, 0.0), Spectrum(4000, 4000)), PARAMS, step_mm=100.0, array_dir=ARRAYS)
+    m = run_scenario(scenarios("F")[3], Region(nx=21, ny=19), Params(oversample=1), ARRAYS)
+    arc = r.indicators["XY"]["arc"]
+    assert arc["lateral_axis"] == "x" and arc["focus_angle_deg"] == pytest.approx(m.indicators["focus_angle_deg"])
+    assert arc["foc_contrast_db"] == pytest.approx(m.indicators["arc_foc_contrast_db"], abs=1e-9)
+    assert arc["foc_share_10deg"] == pytest.approx(0.748, abs=1e-3)  # Mission 05, tone B1
+    assert r.indicators["XZ"]["arc"] is None and r.indicators["YZ"]["arc"] is None  # these planes miss the aperture center
+    p = run_cuts(scenario(PLANAR, (60.0, 60.0, 800.0), Spectrum(4000, 4000), "z"), PARAMS, step_mm=100.0, array_dir=ARRAYS)
+    assert p.indicators["XY"]["arc"] is None  # transverse plane: the beam axis is not in it
+    assert p.indicators["XZ"]["arc"]["lateral_axis"] == "x" and p.indicators["YZ"]["arc"]["lateral_axis"] == "y"
+    # on-axis focus of a mirror-symmetric aperture: the in-plane arcs are mirror symmetric
+    assert p.indicators["XZ"]["arc"]["foc_lobe_peak_deg"] == pytest.approx(0.0, abs=0.03)
